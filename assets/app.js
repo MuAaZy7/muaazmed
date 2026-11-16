@@ -313,7 +313,7 @@ document.addEventListener("change",e=>{if(e.target.id==="lecture-module"){filter
 window.addEventListener("hashchange",()=>{searchText="";$("sidebar")?.classList.remove("open");window.scrollTo({top:0,behavior:"auto"});render()});
 window.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});
 window.addEventListener("beforeunload",()=>{clearInterval(currentTimer)});
-if(EYE_NOTES.length!==66||CASES.length!==50||totalQuestions!==550||SLIDES.length!==72){console.warn("MuaazMed content validation:",{notes:EYE_NOTES.length,cases:CASES.length,questions:totalQuestions,slides:SLIDES.length})}
+if(EYE_NOTES.length!==66||CASES.length!==75||totalQuestions!==725||SLIDES.length!==72){console.warn("MuaazMed content validation:",{notes:EYE_NOTES.length,cases:CASES.length,questions:totalQuestions,slides:SLIDES.length})}
 if(!location.hash)history.replaceState(null,"","#home");
 setIdentity();render();ensureAuth();
 })();

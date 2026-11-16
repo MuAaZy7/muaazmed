@@ -6,7 +6,7 @@ An independent Wits GEMP1 end-of-year revision platform on GitHub Pages.
 
 - 66 conditions verified from the **red-coloured text** in the user-supplied Wits core list (pp. 5–7).
 - Every note includes presenting features, mechanism, findings, investigations, safety, differentials, exam memory hook and VSAQ.
-- 50 clinical case clusters and 550 questions: 31 student-bank clusters (417 questions) plus 19 new author-created clusters (133).
+- 75 clinical case clusters and 725 questions: 31 student-bank clusters (417 questions) plus 44 new author-created clusters (308).
 - Two separate timed mock papers: 120 questions and 180 minutes each, about 18 clusters per paper.
 - Four-option SBAs, data interpretation, short VSAQs, answer review and self-marking.
 - Saved learning status, personal performance, bookmarks and local JSON export.
@@ -53,7 +53,7 @@ The site includes on-question authored explanations immediately even without AI.
 - assets/main.css and assets/app.js — UI and interactions
 - data/core-part-a.js, core-part-b.js, core-part-c.js — 66 exam-focused summaries
 - data/bank.js — student-bank cases and lecture links
-- data/extra-part-a.js, extra-part-b.js — new original cases
+- data/extra-part-a.js, extra-part-b.js, extra-part-c.js, extra-part-d.js — new original cases
 - backend-config.js — blank, public backend configuration
 - supabase/schema.sql — RLS, progress storage, optional scoreboard and AI quota
 - supabase/functions/ask-ai/index.ts — authenticated AI proxy
