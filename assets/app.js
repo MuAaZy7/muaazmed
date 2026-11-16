@@ -19,11 +19,12 @@ const MODULE_ICON={"Emergency":"✚","BCMH":"◈","CVS":"♡","Respiratory":"◉
 const CASES=RAW_CASES.map(c=>Object.assign({},c,{coreNames:Array.isArray(c.core)?c.core:(c.core?[c.core]:(CORE_MAP[c.id]||[]))}));
 const CORE_CASES=CASES.filter(c=>c.coreNames.length>0);
 const KEY="muaazmed-gemp1-2026-v5";
-const defaultState=()=>({learned:[],saved:[],quickChecks:{},caseAnswers:{},flags:{},mockSessions:{},mockHistory:[],guestName:"Guest student",lastVisited:null});
+const defaultState=()=>({learned:[],saved:[],quickChecks:{},flashcards:{},flashSession:null,caseAnswers:{},flags:{},mockSessions:{},mockHistory:[],guestName:"Guest student",lastVisited:null});
 let state=defaultState();
 try{const p=JSON.parse(localStorage.getItem(KEY)||"null");if(p&&typeof p==="object")state=Object.assign(defaultState(),p)}catch(e){}
 if(!Array.isArray(state.learned))state.learned=[];
 if(!Array.isArray(state.saved))state.saved=[];
+if(!state.flashcards||typeof state.flashcards!=="object")state.flashcards={};
 if(!Array.isArray(state.mockHistory))state.mockHistory=[];
 if(!state.mockSessions||typeof state.mockSessions!=="object")state.mockSessions={};
 if(!state.caseAnswers||typeof state.caseAnswers!=="object")state.caseAnswers={};
@@ -54,7 +55,7 @@ function head(over,title,sub,actions=""){return '<div class="page-head"><div><di
 function feedbackBox(text,style=""){return '<div class="feedback '+style+'">'+text+'</div>'}
 function formatNumber(n){return new Intl.NumberFormat("en-ZA").format(n)}
 function clip(s,n=150){return esc(short(s,n))}
-function setCrumb(page){const labels={home:"Dashboard",notes:"Core notes",note:"Core condition",cases:"Case bank",case:"Clinical case",mocks:"Mock exams",mock:"Mock paper",result:"Results",leaderboard:"Scoreboard",lectures:"Lecture library"};$("crumb").textContent=labels[page]||"Dashboard";document.querySelectorAll("[data-nav]").forEach(a=>a.classList.toggle("active",a.dataset.nav===(["note"].includes(page)?"notes":["case"].includes(page)?"cases":["mock","result"].includes(page)?"mocks":page)))}
+function setCrumb(page){const labels={home:"Dashboard",notes:"Core notes",note:"Core condition",cases:"Case bank",case:"Clinical case",mocks:"Mock exams",mock:"Mock paper",result:"Results",flashcards:"Flashcards",study:"Card review",leaderboard:"Scoreboard",lectures:"Lecture library"};$("crumb").textContent=labels[page]||"Dashboard";document.querySelectorAll("[data-nav]").forEach(a=>a.classList.toggle("active",a.dataset.nav===(["note"].includes(page)?"notes":["case"].includes(page)?"cases":["mock","result"].includes(page)?"mocks":page==="study"?"flashcards":page)))}
 function setIdentity(){let label=authUser?(authUser.user_metadata?.nickname||authUser.email?.split("@")[0]||"Student"):state.guestName;label=short(label,21);$("side-name").textContent=label;$("top-identity").textContent=authUser?"My account":"Guest mode";$("top-avatar").textContent=label.slice(0,1).toUpperCase();$("side-status").textContent=authUser?"Synced account (when online)":"Progress saved on this device";document.querySelector(".avatar").textContent=label.slice(0,1).toUpperCase()}
 function learnToggle(name){const idx=state.learned.indexOf(name);if(idx>=0)state.learned.splice(idx,1);else state.learned.push(name);save();render()}
 function saveToggle(name){const idx=state.saved.indexOf(name);if(idx>=0)state.saved.splice(idx,1);else state.saved.push(name);save();render()}
@@ -63,7 +64,7 @@ function renderHome(){
  const quiz=questionStats(),pct=progressPct(),best=bestScore();
  const modules=[["BCMH","BCMH & infections"],["CVS","Cardiovascular"],["Respiratory","Respiratory"],["Renal","Renal"],["GIT","Gastrointestinal"],["MSK","Musculoskeletal"],["Haem / Cancer","Haematology & cancer"],["Emergency","Emergencies"]];
  const subjectTiles=modules.map(([group,label])=>{const count=EYE_NOTES.filter(n=>n.category===group||(group==="Haem / Cancer"&&n.category==="Cancer")).length;const done=EYE_NOTES.filter(n=>(n.category===group||(group==="Haem / Cancer"&&n.category==="Cancer"))&&state.learned.includes(n.name)).length;return '<button class="subject-tile" data-action="module" data-module="'+esc(group)+'"><span class="subject-icon">'+iconFor(group)+'</span><span><b>'+esc(label)+'</b><small>'+done+' / '+count+' conditions revised</small></span><span class="subject-arrow">↗</span></button>'}).join("");
- $("view").innerHTML='<section class="hero"><div class="hero-copy"><div class="hero-kicker">THE GEMP1 END-OF-YEAR INTEGRATED ASSESSMENT</div><h1>Build the clinical thinking that gets you <em>exam-ready.</em></h1><p>Every red-listed GEMP1 condition. Condensed high-yield notes, case clusters, real reasoning and two complete timed practice papers — organised around what Wits says it tests.</p><div class="hero-actions"><a class="btn btn-primary" href="#notes">Start learning ↗</a><a class="btn btn-soft" href="#mocks">Try a full mock exam →</a></div></div><div class="hero-art"><div class="orbit"><div class="hero-ring"><span>'+pct+'%<small>REVISED</small></span></div></div><span class="spark a">✦</span><span class="spark b">✧</span></div></section>'+
+ $("view").innerHTML='<section class="hero"><div class="hero-copy"><div class="hero-kicker">THE GEMP1 END-OF-YEAR INTEGRATED ASSESSMENT</div><h1>Build the clinical thinking that gets you <em>exam-ready.</em></h1><p>Every red-listed GEMP1 condition. Condensed high-yield notes, 396 clinical flashcards, case clusters and two complete timed practice papers — organised around what Wits says it tests.</p><div class="hero-actions"><a class="btn btn-primary" href="#notes">Start learning ↗</a><a class="btn btn-soft" href="#flashcards">Review flashcards →</a><a class="btn btn-soft" href="#mocks">Mock exams ↗</a></div></div><div class="hero-art"><div class="orbit"><div class="hero-ring"><span>'+pct+'%<small>REVISED</small></span></div></div><span class="spark a">✦</span><span class="spark b">✧</span></div></section>'+
  '<section class="stat-grid">'+
  metric("◈",EYE_NOTES.length,"GEMP1 core conditions","Official red-listed scope")+
  metric("☷",CASES.length,"Clinical case clusters",totalQuestions+" practice questions")+
@@ -71,6 +72,7 @@ function renderHome(){
  metric("✦",best==null?"—":best+"%","Your best mock score","Target: 90% or higher")+
  '</section><div class="dashboard-cols"><div><section class="panel"><div class="panel-head"><div><h2>Master the core, one system at a time</h2><p>All 66 red-marked GEMP1 conditions, grouped for fast revision.</p></div><a href="#notes" class="btn btn-sm">View all ↗</a></div><div class="subject-grid">'+subjectTiles+'</div><div class="notice">Source transparency: the 66-condition scope follows the red text in your Wits document. Summaries are original educational syntheses; case questions include student-bank contributions and separately identified original practice.</div></section></div><div><section class="panel"><div class="panel-head"><div><h2>Your revision pulse</h2><p>Your progress is private to this device in guest mode.</p></div></div><div class="progress-meta"><span>Conditions revised</span><b>'+state.learned.length+' / '+EYE_NOTES.length+'</b></div><div class="progress-track"><span style="width:'+pct+'%"></span></div><div class="rule"></div>'+
  task("▤","Finish your next condition","Short mechanism + discriminators + red flags","#notes")+
+ task("◈","Flip active-recall flashcards","396 cards with spaced reviews","#flashcards")+
  task("◈","Reason through a case cluster","SBA, results interpretation and VSAQ","#cases")+
  task("▣","Sit a 3-hour timed mock","120 marks · exam-style review","#mocks")+
  '<div class="notice good"><strong>Practice so far:</strong> '+quiz.count+' questions answered · '+(quiz.count?quiz.percent+"% accuracy":"no answers yet")+'.</div></section></div></div>';
@@ -101,8 +103,7 @@ function slidesFor(n){const wordMap={
 function renderDetail(name){
  const n=EYE_NOTES.find(x=>norm(x.name)===norm(name));if(!n){goto("#notes");return}
  const saved=state.saved.includes(n.name),learned=state.learned.includes(n.name),rels=relatedCases(n.name),slides=slidesFor(n);
- const check=state.quickChecks[n.name];let quickFeedback="";
- if(check){const correct=check.correct;quickFeedback=feedbackBox((correct?"✓ Correct. ":"Review this: ")+"Expected VSAQ: <strong>"+esc(n.answer)+"</strong>. "+esc(n.memory),correct?"good":"bad")}
+ 
  const sections=[
   section("◈","Clinical presentation",n.presentation,""),
   section("✳","Mechanism · explain why",n.mechanism,"highlight"),
@@ -114,7 +115,7 @@ function renderDetail(name){
  ].join("");
  const links=rels.map(c=>'<div class="linked-case"><span>◈</span><strong>'+esc(c.title)+'</strong><a href="'+caseHash(c.id)+'">Practise ↗</a></div>').join("")||'<p class="tiny-note">A full case cluster is being prepared for this condition. Start with its VSAQ and use the clinical case bank for integrated practice.</p>';
  const lectures=slides.map(s=>'<div class="linked-case"><span>▥</span><strong>'+esc(s.name)+'</strong><a href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer">Slides ↗</a></div>').join("")||'<p class="tiny-note">Browse the lecture library to find supporting course material.</p>';
- $("view").innerHTML='<div class="detail-layout"><div class="detail-main"><button class="back-link" data-action="back-notes">← Back to core conditions</button><div class="detail-hero"><div class="detail-top">'+badge("GEMP1 red-listed","red")+badge(n.category,"blue")+(learned?badge("Revised ✓","green"):"")+'</div><h1>'+esc(n.name)+'</h1><p>'+esc(n.presentation)+'</p><div class="page-actions"><button class="btn '+(learned?"btn-success":"btn-primary")+'" data-action="learn" data-name="'+esc(n.name)+'">'+(learned?"✓ Marked as revised":"+ Mark as revised")+'</button><button class="btn" data-action="save" data-name="'+esc(n.name)+'">'+(saved?"★ Saved":"☆ Save note")+'</button></div></div>'+sections+'<div class="notice">Study rule: be able to recognise the presentation, explain the underlying mechanism, interpret basic investigations and state the safest supervised action. These summaries are revision aids, not a replacement for your original Wits teaching material.</div></div><aside class="detail-aside"><section class="aside-box"><div class="overline">ACTIVE RECALL</div><h3>One-line VSAQ</h3><p class="mini-question">'+esc(n.vsaq)+'</p><div class="mini-answer"><input class="input" id="quick-answer" aria-label="Your very short answer" placeholder="1–3 words" value="'+esc(check?.answer||"")+'"><button class="btn btn-primary btn-sm" data-action="quick-check" data-name="'+esc(n.name)+'">Check</button></div><div id="quick-feedback">'+quickFeedback+'</div></section><section class="aside-box"><h3>Linked case practice</h3>'+links+'</section><section class="aside-box"><h3>Related Wits lectures</h3>'+lectures+'</section></aside></div>';
+ $("view").innerHTML='<div class="detail-layout"><div class="detail-main"><button class="back-link" data-action="back-notes">← Back to core conditions</button><div class="detail-hero"><div class="detail-top">'+badge("GEMP1 red-listed","red")+badge(n.category,"blue")+(learned?badge("Revised ✓","green"):"")+'</div><h1>'+esc(n.name)+'</h1><p>'+esc(n.presentation)+'</p><div class="page-actions"><button class="btn '+(learned?"btn-success":"btn-primary")+'" data-action="learn" data-name="'+esc(n.name)+'">'+(learned?"✓ Marked as revised":"+ Mark as revised")+'</button><button class="btn" data-action="save" data-name="'+esc(n.name)+'">'+(saved?"★ Saved":"☆ Save note")+'</button><button class="btn btn-soft" data-action="flash-start" data-scope="condition:'+esc(n.name)+'" data-mode="All" data-limit="6">◈ Flashcards</button></div></div>'+sections+'<div class="notice">Study rule: be able to recognise the presentation, explain the underlying mechanism, interpret basic investigations and state the safest supervised action. These summaries are revision aids, not a replacement for your original Wits teaching material.</div></div><aside class="detail-aside"><section class="aside-box"><div class="overline">ACTIVE RECALL · FLASHCARDS</div><h3>6 cards for this condition</h3><p>Clinical recognition, mechanism, investigations, safety, differential and VSAQ.</p><div class="progress-meta"><span>Mastered</span><b>'+Flash.statsFor(n.name).mastered+' / 6</b></div><div class="progress-track"><span style="width:'+(Flash.statsFor(n.name).mastered/6*100)+'%"></span></div><button class="btn btn-primary btn-wide" style="margin-top:14px" data-action="flash-start" data-scope="condition:'+esc(n.name)+'" data-mode="All" data-limit="6">Study 6 flashcards →</button><p class="tiny-note" style="margin-top:10px">Flip the card and rate your recall to schedule future reviews.</p></section><section class="aside-box"><h3>Linked case practice</h3>'+links+'</section><section class="aside-box"><h3>Related Wits lectures</h3>'+lectures+'</section></aside></div>';
 }
 function section(icon,title,body,kind){return '<section class="detail-section '+kind+'"><h2><span>'+icon+'</span>'+esc(title)+'</h2><p>'+esc(body)+'</p></section>'}
 function renderCases(){
@@ -218,7 +219,8 @@ function renderLectures(){
  $("view").innerHTML=head("SOURCE LIBRARY","Wits lecture bank","Direct Google Drive lecture links supplied for GEMP1 revision. These are references — this website does not redistribute the slide PDFs.",'<a class="btn btn-primary" href="https://drive.google.com/drive/folders/185j-AM_bQrW6duNPT5NQIGCTzxQ_8yD8" target="_blank" rel="noopener">Open Drive folder ↗</a>')+
  '<div class="toolbar"><label class="search-field"><span>⌕</span><input id="lectures-search" type="search" aria-label="Search lectures" placeholder="Find lecture titles…" value="'+esc(searchText)+'"></label><select id="lecture-module" class="select" aria-label="Select lecture module">'+choices.map(x=>'<option value="'+esc(x)+'" '+(x===filterLectures?"selected":"")+'>'+esc(x)+'</option>').join("")+'</select></div><p class="tiny-note">'+slides.length+' lecture references shown</p><div class="lectures-list">'+slides.map(s=>'<a class="lecture-item" href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer"><span>▥</span><div><b>'+esc(s.name)+'</b><small>'+esc(s.module)+'</small></div><span>↗</span></a>').join("")+'</div>';
 }
-function render(){clearInterval(currentTimer);let r=decodeURIComponent(location.hash.replace(/^#/,"")||"home").split("/");let page=r[0]||"home";if(!["home","notes","note","cases","case","mocks","mock","result","leaderboard","lectures"].includes(page))page="home";setCrumb(page);setIdentity();
+const Flash=window.createMuaazFlashcards({notes:EYE_NOTES,getState:()=>state,save,goto,view:()=>$("view"),esc,norm,badge,toast,render});
+function render(){clearInterval(currentTimer);let r=decodeURIComponent(location.hash.replace(/^#/,"")||"home").split("/");let page=r[0]||"home";if(!["home","notes","note","cases","case","mocks","mock","result","leaderboard","lectures","flashcards","study"].includes(page))page="home";setCrumb(page);setIdentity();
  try{
   if(page==="home")renderHome();
   else if(page==="notes")renderNotes();
@@ -230,6 +232,8 @@ function render(){clearInterval(currentTimer);let r=decodeURIComponent(location.
   else if(page==="result")renderResult(r[1]);
   else if(page==="leaderboard")renderLeaderboard();
   else if(page==="lectures")renderLectures();
+  else if(page==="flashcards")Flash.overview();
+  else if(page==="study")Flash.study();
  }catch(err){console.error(err);$("view").innerHTML='<div class="empty"><h3>We could not load that section.</h3><p>'+esc(err.message)+'</p><a class="btn" href="#home">Return to dashboard</a></div>'}
 }
 function startMock(p){if(!MOCKS[p]||MOCKS[p].length!==120){toast("This paper is not ready");return}let s=state.mockSessions[p];if(!s||s.status!=="active"){s={status:"active",started:Date.now(),end:Date.now()+180*60000,index:0,answers:{},flags:[],review:{},recorded:false};state.mockSessions[p]=s;save()}goto("#mock/"+p)}
@@ -267,6 +271,7 @@ async function sendAI(){if(!activeQuestion||!supabase||!authUser){toast("Sign in
 document.addEventListener("click",e=>{
  const el=e.target.closest("[data-action]");if(!el)return;
  const action=el.dataset.action;
+ if(Flash.handleAction(action,el))return;
  if(action==="close-modal"){if(e.target.closest("[data-no-close]")&&!e.target.closest(".close-x"))return;closeModal();return}
  if(["search","menu","account","export","load-board"].includes(action)){
   if(action==="search"){goto("#notes");setTimeout(()=>$("notes-search")?.focus(),80)}
@@ -304,16 +309,17 @@ document.addEventListener("click",e=>{
 });
 document.addEventListener("input",e=>{
  const t=e.target;
+ if(Flash.handleInput(t))return;
  if(t.id==="notes-search"){searchText=t.value;refreshNotesList()}
  if(t.id==="cases-search"){searchText=t.value;renderCases();const input=$("cases-search");if(input){input.focus();input.setSelectionRange(searchText.length,searchText.length)}}
  if(t.id==="lectures-search"){searchText=t.value;renderLectures();const input=$("lectures-search");if(input){input.focus();input.setSelectionRange(searchText.length,searchText.length)}}
  if(t.id==="mock-free"){const p=t.dataset.paper,s=state.mockSessions[p];if(s&&s.status==="active"){const item=MOCKS[p][s.index];s.answers[item.id]=t.value;save()}}
 });
-document.addEventListener("change",e=>{if(e.target.id==="lecture-module"){filterLectures=e.target.value;renderLectures()}});
+document.addEventListener("change",e=>{if(Flash.handleChange(e.target))return;if(e.target.id==="lecture-module"){filterLectures=e.target.value;renderLectures()}});
 window.addEventListener("hashchange",()=>{searchText="";$("sidebar")?.classList.remove("open");window.scrollTo({top:0,behavior:"auto"});render()});
-window.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});
+window.addEventListener("keydown",e=>{if(Flash.handleKey(e))return;if(e.key==="Escape")closeModal()});
 window.addEventListener("beforeunload",()=>{clearInterval(currentTimer)});
-if(EYE_NOTES.length!==66||CASES.length!==75||totalQuestions!==725||SLIDES.length!==72){console.warn("MuaazMed content validation:",{notes:EYE_NOTES.length,cases:CASES.length,questions:totalQuestions,slides:SLIDES.length})}
+if(EYE_NOTES.length!==66||CASES.length!==75||totalQuestions!==725||SLIDES.length!==72||Flash.cards.length!==396){console.warn("MuaazMed content validation:",{notes:EYE_NOTES.length,cases:CASES.length,questions:totalQuestions,slides:SLIDES.length})}
 if(!location.hash)history.replaceState(null,"","#home");
 setIdentity();render();ensureAuth();
 })();

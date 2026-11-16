@@ -1,0 +1,58 @@
+
+/* GEMP1 Flashcard studio — independent styles to keep the main sheet lightweight. */
+.flash-hero{padding:28px 32px;border-radius:22px;background:radial-gradient(circle at 100% 0%,#e8eaff 0,transparent 39%),linear-gradient(128deg,#fff,#f7f8ff);border:1px solid #e1e4f5;display:flex;align-items:center;gap:30px;justify-content:space-between;margin-bottom:20px;box-shadow:0 12px 30px #343f7c0c}
+.flash-hero h1{font-size:clamp(23px,3.5vw,34px);line-height:1.2;margin:8px 0 10px;max-width:650px}
+.flash-hero p{max-width:680px;color:#697792;line-height:1.75;font-size:12px;margin:0}
+.flash-burst{flex:0 0 88px;display:grid;place-items:center;width:88px;height:88px;border:1px solid #b7bdf4;border-radius:23px;background:linear-gradient(135deg,#454ebc,#6e76de);color:#fff;box-shadow:0 18px 35px #5765c944;font-size:42px;transform:rotate(-10deg)}
+.flash-metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:20px}
+.flash-metric{background:#fff;border:1px solid #e5e8f0;border-radius:15px;padding:19px 17px;box-shadow:0 4px 17px #242e5109}
+.flash-metric b{display:block;font-family:"Plus Jakarta Sans",sans-serif;font-size:25px;letter-spacing:-1px;margin:6px 0 4px}
+.flash-metric small{font-size:11px;color:#8491a4}.flash-metric .glyph{font-size:19px;color:#6671d9}
+.flash-controls{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:20px 0}
+.flash-field{display:grid;gap:6px;min-width:175px;flex:1;font-size:10px;font-weight:800;color:#718098;letter-spacing:.3px}.flash-field select{width:100%;padding:12px;background:#fff;border:1px solid #dde3ed;border-radius:10px;color:#1c2f4d;font-size:12px}
+.flash-controls .btn{height:43px}
+.flash-section-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:24px 0 14px}
+.flash-section-head h2{margin:0;font-size:18px}.flash-section-head p{margin:4px 0 0;font-size:11px;color:#8895a6}
+.flash-condition-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.flash-deck-tile{display:flex;flex-direction:column;gap:13px;min-height:161px;padding:18px;border:1px solid #e5e9f3;border-radius:15px;background:#fff;box-shadow:0 5px 19px #26364f09;text-align:left}
+.flash-deck-tile:hover{border-color:#acb6f0;transform:translateY(-2px);transition:.15s}
+.flash-deck-tile .top{display:flex;align-items:center;justify-content:space-between;gap:9px}
+.flash-deck-tile .top span:last-child{font-size:10px;color:#8b97aa}
+.flash-deck-tile h3{font-size:13px;line-height:1.45;margin:0;color:#22314c}.flash-deck-tile footer{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:11px;color:#808da5;margin-top:auto}.flash-deck-tile footer strong{color:#4d59c3}
+.flash-deck-progress{height:6px;background:#e9edf4;border-radius:4px;overflow:hidden}.flash-deck-progress span{height:100%;display:block;background:linear-gradient(90deg,#7a7fe2,#32b99a);border-radius:4px}
+.flash-play-shell{max-width:850px;margin:0 auto}
+.flash-play-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:23px}.flash-play-header h1{font-size:24px;margin:0 0 6px}.flash-play-header p{font-size:11px;color:#7c899f;margin:0}
+.flash-play-meter{display:flex;justify-content:space-between;gap:10px;margin:12px 0;font-size:11px;color:#697991}
+.flash-play-meter b{font-size:12px;color:#2f3d66}
+.flash-track{background:#e6eafa;height:8px;width:100%;border-radius:9px;overflow:hidden;margin-bottom:24px}
+.flash-track span{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,#6269d3,#4ac4ab);transition:width .25s}
+.flash-card-wrap{width:100%;height:355px;perspective:1400px;position:relative;margin-bottom:19px}
+.flash-card-rotate{width:100%;height:100%;transition:transform .43s cubic-bezier(.2,.8,.2,1);transform-style:preserve-3d;position:relative}
+.flash-card-rotate.flipped{transform:rotateY(180deg)}
+.flash-card-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:23px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:35px 45px;text-align:center;overflow:hidden;box-shadow:0 25px 55px #222e6b1a}
+.flash-card-front{background:linear-gradient(135deg,#1b2853,#3d4da5);color:#fff;border:1px solid #495aba}
+.flash-card-front:before,.flash-card-front:after{content:"";position:absolute;width:320px;height:320px;border:1px solid #ffffff18;border-radius:50%;right:-160px;top:-210px}
+.flash-card-front:after{right:auto;top:auto;bottom:-250px;left:-125px;width:410px;height:410px}
+.flash-card-back{background:#fff;color:#1d2e4a;border:1px solid #b6e0d3;transform:rotateY(180deg)}
+.flash-card-back:before{content:"";position:absolute;top:0;left:0;right:0;height:7px;background:linear-gradient(90deg,#3fa894,#81d8c4)}
+.flash-face-overline{font-size:10px;text-transform:uppercase;letter-spacing:1.7px;font-weight:800;opacity:.75;margin-bottom:20px;position:relative;z-index:1}
+.flash-prompt{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:clamp(20px,2.9vw,30px);letter-spacing:-.04em;line-height:1.38;max-width:680px;margin:0;position:relative;z-index:1;overflow-wrap:anywhere}
+.flash-answer{font-family:"Plus Jakarta Sans",sans-serif;font-size:clamp(19px,2.7vw,29px);line-height:1.4;font-weight:800;color:#22365a;max-width:680px;margin:0;overflow-wrap:anywhere}
+.flash-card-hint{font-size:11px;position:absolute;bottom:26px;color:#bdc8ff;letter-spacing:.4px}
+.flash-card-back .flash-card-hint{color:#90a3b8}
+.flash-flip-button{position:absolute;inset:0;width:100%;height:100%;border:0;opacity:0;cursor:pointer;border-radius:23px}
+.flash-rating-area{background:#fff;border:1px solid #e5e9f2;border-radius:16px;padding:19px;min-height:111px;box-shadow:0 7px 23px #23334e0b}
+.flash-rating-title{text-align:center;font-size:12px;color:#8793a5;margin:1px 0 14px;font-weight:800}
+.flash-rating-buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.flash-rating{min-height:66px;border:1px solid #dce2ed;background:#fff;color:#3c4d6b;border-radius:12px;padding:10px 7px;text-align:center}
+.flash-rating strong{font-size:13px;display:block;margin-bottom:4px}.flash-rating small{font-size:10px;display:block;color:#8694a8}
+.flash-rating.again{background:#fff5f5;border-color:#f4d5d7;color:#b74e60}.flash-rating.hard{background:#fff8eb;border-color:#f2e2c5;color:#986b2d}.flash-rating.good{background:#edf5ff;border-color:#d2e1f8;color:#365eab}.flash-rating.easy{background:#edf9f1;border-color:#ccead8;color:#158365}
+.flash-rating:hover{filter:brightness(.98);transform:translateY(-1px)}
+.flash-reveal{display:flex;justify-content:center;min-height:70px;align-items:center}.flash-reveal .btn{padding:14px 24px}
+.flash-play-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px;color:#8390a5;font-size:11px}
+.flash-complete{max-width:620px;margin:25px auto;background:#fff;border:1px solid #e3e8f1;border-radius:22px;padding:42px 34px;text-align:center;box-shadow:var(--shadow)}
+.flash-complete .symbol{font-size:52px;color:#4dbd9e;margin-bottom:17px}.flash-complete h1{font-size:29px;margin:0 0 12px}.flash-complete p{font-size:12px;line-height:1.75;color:#7b889c}
+.flash-result-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:22px 0}.flash-result-grid div{background:#f4f6fb;border-radius:11px;padding:13px 5px}.flash-result-grid b{display:block;font-size:22px}.flash-result-grid small{color:#8997a8;font-size:10px}
+.flash-next{font-size:11px;color:#7b899b;line-height:1.7;margin-top:10px}
+@media(max-width:1050px){.flash-condition-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:680px){.flash-hero{padding:24px}.flash-burst{display:none}.flash-metric-grid{grid-template-columns:repeat(2,1fr);gap:9px}.flash-condition-grid{grid-template-columns:1fr}.flash-controls{align-items:stretch}.flash-field{min-width:100%}.flash-card-wrap{height:365px}.flash-card-face{padding:26px 21px}.flash-rating-area{padding:12px}.flash-rating-buttons{gap:6px}.flash-rating{min-height:66px;padding:8px 4px}.flash-rating strong{font-size:11px}.flash-rating small{font-size:9px}.flash-play-header{display:block}.flash-play-header .btn{margin-top:12px}.flash-prompt{font-size:21px}.flash-answer{font-size:20px}.flash-card-hint{bottom:20px}.flash-play-footer{display:block;text-align:center}.flash-play-footer .tiny-note{display:block;margin-bottom:8px}}
+@media(prefers-reduced-motion:reduce){.flash-card-rotate{transition:none}.flash-deck-tile:hover,.flash-rating:hover{transform:none}}
