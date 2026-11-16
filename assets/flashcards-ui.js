@@ -6,13 +6,22 @@ window.createMuaazFlashcards=function(env){
  "use strict";
  const {notes,getState,save,goto,view,esc,norm,badge,toast,render}=env;
  const seeds=Array.isArray(window.MED_FLASHCARD_SEEDS)?window.MED_FLASHCARD_SEEDS:[];
- const all=seeds.flatMap((seed,i)=>{
+ const base=seeds.flatMap((seed,i)=>{
   const note=notes.find(n=>n.name===seed.name);if(!note)return[];
   return [...seed.pairs,{front:note.vsaq,back:note.answer,skill:"VSAQ"}].map((p,j)=>({
    id:"eye2026-"+(i+1)+"-"+(j+1),name:note.name,module:note.category,
    front:p.front,back:p.back,skill:p.skill
   }));
  });
+ const extensions=Array.isArray(window.MED_FLASHCARD_EXTENDED)?window.MED_FLASHCARD_EXTENDED:[];
+ const extended=extensions.flatMap((seed,i)=>{
+  const note=notes.find(n=>n.name===seed.name);if(!note)return[];
+  return (seed.cards||[]).map((p,j)=>({
+   id:"eye2026-deep-"+(i+1)+"-"+(j+1),name:note.name,module:note.category,
+   front:p.front,back:p.back,skill:p.skill
+  }));
+ });
+ const all=[...base,...extended];
  const DAY=86400000;
  let scope="All",mode="Due",batch=20,search="";
  const safeState=()=>{const s=getState();if(!s.flashcards||typeof s.flashcards!=="object")s.flashcards={};return s};
@@ -69,15 +78,15 @@ window.createMuaazFlashcards=function(env){
  function metric(icon,title,value){return '<div class="flash-metric"><span class="glyph">'+icon+'</span><b>'+value+'</b><small>'+title+'</small></div>'}
  function overview(){
   const s=stats(all);
-  view().innerHTML='<div class="flash-hero"><div><div class="overline">ACTIVE RECALL · SPACED REVISION</div><h1>Know it <em style="font-style:normal;color:#4e58c5">before</em> you flip.</h1><p>396 high-yield flashcards: six per red-listed GEMP1 condition. Recognise clinical patterns, explain mechanisms, select investigations, flag emergencies and distinguish lookalikes. Rate recall to schedule the next review.</p></div><div class="flash-burst" aria-hidden="true">◈</div></div>'+
+  view().innerHTML='<div class="flash-hero"><div><div class="overline">ACTIVE RECALL · SPACED REVISION</div><h1>Know it <em style="font-style:normal;color:#4e58c5">before</em> you flip.</h1><p>'+all.length+' high-yield flashcards across 66 red-listed GEMP1 conditions. Recognise clinical patterns, explain mechanisms, select investigations, flag emergencies and distinguish lookalikes. Rate recall to schedule the next review.</p></div><div class="flash-burst" aria-hidden="true">◈</div></div>'+
    '<div class="flash-metric-grid">'+metric("▤","Flashcards",s.total)+metric("◷","Due for review",s.due)+metric("◎","Studied at least once",s.seen)+metric("✦","Mastered",s.mastered)+'</div>'+
-   '<section class="panel"><div class="panel-head"><div><h2>Create a review session</h2><p>Choose a system or individual disease, then start with new, due or missed cards.</p></div>'+badge("6 cards per core","blue")+'</div>'+
+   '<section class="panel"><div class="panel-head"><div><h2>Create a review session</h2><p>Choose a system or individual disease, then start with new, due or missed cards.</p></div>'+badge("Deep decks · no six-card limit","blue")+'</div>'+
    '<div class="flash-controls"><label class="flash-field">Deck<select id="flash-scope">'+menu()+'</select></label>'+
    '<label class="flash-field">Review mode<select id="flash-mode">'+["Due","New","Missed","All"].map(x=>option(x,x,mode)).join("")+'</select></label>'+
-   '<label class="flash-field">Cards this session<select id="flash-limit">'+[10,20,40,80,396].map(x=>option(String(x),x===396?"Entire available deck":x+" cards",String(batch))).join("")+'</select></label>'+
+   '<label class="flash-field">Cards this session<select id="flash-limit">'+[10,20,40,80,160,0].map(x=>option(String(x),x===0?"Entire available deck":x+" cards",String(batch))).join("")+'</select></label>'+
    '<button class="btn btn-primary" data-action="flash-start">Start review →</button></div>'+
    '<div class="notice good">Say the answer aloud or think it through, then flip. Mark <b>Again</b>, <b>Hard</b>, <b>Good</b> or <b>Easy</b> based on recall — not on how familiar the answer looks after revealing it. Your ratings schedule future reviews.</div></section>'+
-   '<div class="flash-section-head"><div><h2>Individual condition decks</h2><p>Each red-listed condition has its own six-card mini deck.</p></div><span class="chip blue" id="flash-deck-count">66 conditions</span></div>'+
+   '<div class="flash-section-head"><div><h2>Individual condition decks</h2><p>Every core has clinical, science, investigation, safety and data flashcards.</p></div><span class="chip blue" id="flash-deck-count">66 conditions</span></div>'+
    '<div class="toolbar"><label class="search-field"><span>⌕</span><input id="flash-search" type="search" placeholder="Search core conditions…" value="'+esc(search)+'" aria-label="Search flashcard decks"></label></div>'+
    '<div class="flash-condition-grid" id="flash-decks"></div>';
   refreshDecks();
@@ -87,10 +96,10 @@ window.createMuaazFlashcards=function(env){
   let list=notes.filter(n=>(scope==="All"||(scope.startsWith("module:")?n.category===scope.slice(7):scope.startsWith("condition:")?n.name===scope.slice(10):true))&&norm(n.name+" "+n.category).includes(norm(search))).sort((a,b)=>a.name.localeCompare(b.name));
   target.innerHTML=list.map(n=>{
    const s=statsFor(n.name),pct=Math.round(s.mastered/Math.max(s.total,1)*100);
-   return '<button class="flash-deck-tile" data-action="flash-start" data-scope="condition:'+esc(n.name)+'" data-mode="All" data-limit="6">'+
+   return '<button class="flash-deck-tile" data-action="flash-start" data-scope="condition:'+esc(n.name)+'" data-mode="All" data-limit="0">'+
     '<span class="top">'+badge(n.category,"blue")+'<span>'+s.due+' due</span></span>'+
     '<h3>'+esc(n.name)+'</h3><div class="flash-deck-progress"><span style="width:'+pct+'%"></span></div>'+
-    '<footer><span>'+s.mastered+' / 6 mastered</span><strong>Flip cards ↗</strong></footer></button>';
+    '<footer><span>'+s.mastered+' / '+s.total+' mastered</span><strong>Flip cards ↗</strong></footer></button>';
   }).join("")||'<div class="empty"><h3>No matching conditions</h3><p>Try changing the search or the chosen deck.</p></div>';
   const count=document.getElementById("flash-deck-count");if(count)count.textContent=list.length+" conditions";
  }
