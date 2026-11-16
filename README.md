@@ -15,6 +15,19 @@ An independent Wits GEMP1 end-of-year revision platform on GitHub Pages.
 
 **Academic source labels:** Wits official guide defines exam format; the question bank is student-contributed and new questions are original practice, NOT Wits past-paper questions. No grade can be guaranteed.
 
+
+## Proper active-recall flashcards (NEW)
+
+- **396 flip-to-reveal cards**, six for each of the 66 GEMP1 red-listed core conditions.
+- Each disease deck covers: clinical recognition, mechanism, investigation, danger/next step, discriminating mimics and one core VSAQ.
+- An individual condition's notes page has a **Study 6 flashcards** action.
+- Dedicated **Clinical flashcards** navigation includes all-system review, system-specific review, individual disease decks, and search.
+- **Due**, **New**, **Missed** and **All** session modes. Review 10/20/40/80 cards or a full available deck.
+- **Again / Hard / Good / Easy** self-ratings with a simple progressive review schedule; Again cards are repeated once in the same session.
+- The review engine saves per-card scheduling and personal progress in the same guest-mode storage as the rest of MuaazMed. The existing optional account progress snapshot also includes flashcard review records once the external backend is configured.
+- Keyboard shortcuts: Space flips; 1–4 rate recall; Escape returns to the deck overview.
+- These are curated original educational recall cards built from the supplied red-listed curriculum, not official Wits cards. Correctness and difficulty require regular academic review.
+
 ## Deploy
 
 Host this repository through GitHub Pages using the main branch/root. Keep the existing CNAME for muaazmed.com. The new homepage is index.html and all assets/data paths are relative. Individual files stay below GitHub's browser upload threshold.
