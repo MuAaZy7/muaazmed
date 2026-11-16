@@ -6,7 +6,7 @@ An independent Wits GEMP1 end-of-year revision platform on GitHub Pages.
 
 - 66 conditions verified from the **red-coloured text** in the user-supplied Wits core list (pp. 5–7).
 - Every note includes presenting features, mechanism, findings, investigations, safety, differentials, exam memory hook and VSAQ.
-- 75 clinical case clusters and 725 questions: 31 student-bank clusters (417 questions) plus 44 new author-created clusters (308).
+- 141 clinical case clusters and 1,253 questions: 31 student-bank clusters (417 questions) plus 110 author-created clusters (836 questions). Each core condition has at least two linked clinical clusters.
 - Two separate timed mock papers: 120 questions and 180 minutes each, about 18 clusters per paper.
 - Four-option SBAs, data interpretation, short VSAQs, answer review and self-marking.
 - Saved learning status, personal performance, bookmarks and local JSON export.
@@ -18,11 +18,11 @@ An independent Wits GEMP1 end-of-year revision platform on GitHub Pages.
 
 ## Proper active-recall flashcards (NEW)
 
-- **396 flip-to-reveal cards**, six for each of the 66 GEMP1 red-listed core conditions.
-- Each disease deck covers: clinical recognition, mechanism, investigation, danger/next step, discriminating mimics and one core VSAQ.
-- An individual condition's notes page has a **Study 6 flashcards** action.
-- Dedicated **Clinical flashcards** navigation includes all-system review, system-specific review, individual disease decks, and search.
-- **Due**, **New**, **Missed** and **All** session modes. Review 10/20/40/80 cards or a full available deck.
+- **1,254 flip-to-reveal cards**, nineteen for each of the 66 GEMP1 red-listed core conditions.
+- Each disease deck covers: several clinical recognition prompts, mechanisms, examination clues, investigations, interpretation of data, red flags/next steps, mimics, memory hooks and multiple VSAQs.
+- An individual condition's notes page has a **Study all flashcards** action with no six-card limit.
+- Dedicated **flashcards.html** page plus in-note flashcards: all-system review, system-specific review, individual disease decks, and search.
+- **Due**, **New**, **Missed** and **All** session modes. Review 10/20/40/80/160 cards or a full available deck.
 - **Again / Hard / Good / Easy** self-ratings with a simple progressive review schedule; Again cards are repeated once in the same session.
 - The review engine saves per-card scheduling and personal progress in the same guest-mode storage as the rest of MuaazMed. The existing optional account progress snapshot also includes flashcard review records once the external backend is configured.
 - Keyboard shortcuts: Space flips; 1–4 rate recall; Escape returns to the deck overview.
@@ -31,6 +31,10 @@ An independent Wits GEMP1 end-of-year revision platform on GitHub Pages.
 ## Deploy
 
 Host this repository through GitHub Pages using the main branch/root. Keep the existing CNAME for muaazmed.com. The new homepage is index.html and all assets/data paths are relative. Individual files stay below GitHub's browser upload threshold.
+
+## Setup guide for accounts and AI
+
+**[Follow the step-by-step browser and CLI setup guide](SETUP_BACKEND.md)**. Guest practice requires no backend; cloud accounts and AI remain inactive until the project is configured.
 
 ## Activate optional accounts, progress sync and community scoreboard
 
@@ -66,7 +70,7 @@ The site includes on-question authored explanations immediately even without AI.
 - assets/main.css and assets/app.js — UI and interactions
 - data/core-part-a.js, core-part-b.js, core-part-c.js — 66 exam-focused summaries
 - data/bank.js — student-bank cases and lecture links
-- data/extra-part-a.js, extra-part-b.js, extra-part-c.js, extra-part-d.js — new original cases
+- data/extra-part-a.js through extra-part-d.js and data/extra-clusters-2.js — new original cases
 - backend-config.js — blank, public backend configuration
 - supabase/schema.sql — RLS, progress storage, optional scoreboard and AI quota
 - supabase/functions/ask-ai/index.ts — authenticated AI proxy
@@ -78,3 +82,11 @@ The 66 summaries are original syntheses of the user-provided scope and medical s
 
 Test by running: python -m http.server 8000
 Then open localhost:8000. JavaScript syntax: node --check assets/app.js
+
+## Clinical cluster expansion (Nov 2026)
+
+- 66 new, alternate clinical cases authored for the 66 red-listed GEMP1 core conditions. All include five 4-option SBAs, one interpretation SBA and two short VSAQs (eight questions each).
+- The additional cases are **original practice modelled on the Wits example format**, not copied Wits examination questions and not guaranteed to have official difficulty.
+- Each condition now links to at least two cases, and the core study notes link to its deep flashcards.
+- Two timed 120-mark/180-minute mock papers are preserved and continue drawing separate clusters from the core pool.
+- Review clinical accuracy of new material before relying on it for high-stakes assessment.

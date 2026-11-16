@@ -33,8 +33,24 @@ Deno.serve(async (request: Request) => {
   if (!jwt) return result(401, { error: "Sign in to use the AI tutor." }, origin);
 
   const url = Deno.env.get("SUPABASE_URL");
-  const publicKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
-  const serverKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SECRET_KEY");
+  // Supabase new projects may inject named publishable/secret key maps.
+  // Legacy deployments may still expose the original ANON/SERVICE_ROLE keys.
+  const namedKey = (envName: string): string => {
+    try {
+      const raw = Deno.env.get(envName);
+      if (!raw) return "";
+      const map = JSON.parse(raw);
+      return typeof map.default === "string" ? map.default : "";
+    } catch { return ""; }
+  };
+  const publicKey =
+    Deno.env.get("SUPABASE_ANON_KEY") ||
+    Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ||
+    namedKey("SUPABASE_PUBLISHABLE_KEYS");
+  const serverKey =
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
+    Deno.env.get("SUPABASE_SECRET_KEY") ||
+    namedKey("SUPABASE_SECRET_KEYS");
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
   if (!url || !publicKey || !serverKey || !openaiKey)
     return result(503, { error: "AI service has not been configured." }, origin);
