@@ -3,68 +3,59 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#101e36">
-<meta name="description" content="MuaazMed — Wits GEMP1 end-of-year integrated assessment practice, Renal, GIT, Past Papers and MSK.">
-<title>MuaazMed | GEMP1 EYE</title>
-<style>
-:root{--navy:#101e36;--blue:#355eda;--bg:#f6f8fb;--line:#e1e7f0;--ink:#182944;--muted:#62738e}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
-body{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
-header{display:flex;gap:20px;align-items:center;padding:9px 24px;min-height:70px;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 4px 18px #15284309;z-index:3}
-.brand{display:flex;gap:10px;align-items:center;text-decoration:none;color:inherit;flex-shrink:0}
-.logo{width:42px;height:42px;border-radius:13px;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:950;font-size:23px}
-.brand strong{font-size:18px;letter-spacing:-.5px}.brand small{font-size:10px;color:var(--muted);display:block;margin-top:2px}
-nav{display:flex;gap:5px;align-items:center;padding:4px;background:#f2f5fa;border:1px solid var(--line);border-radius:13px;min-width:0}
-nav button{border:0;background:transparent;color:#63748f;border-radius:9px;padding:11px 14px;font-size:12px;font-weight:800;white-space:nowrap;cursor:pointer;transition:background .15s}
-nav button:hover{background:#fff;color:var(--navy)}
-nav button[aria-current="page"]{background:var(--navy);color:#fff;box-shadow:0 2px 7px #101e3622}
-.right{margin-left:auto;text-align:right;white-space:nowrap}.right b{display:block;font-size:11px}.right span{display:block;color:#8a98ac;font-size:10px;margin-top:3px}
-main{min-height:0;flex:1}iframe{width:100%;height:100%;display:block;border:0;background:var(--bg)}
-.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
-@media(max-width:1030px){.right{display:none}header{gap:12px;padding:9px 13px}nav{flex:1;justify-content:space-around}nav button{padding:10px}}
-@media(max-width:710px){header{display:block;padding:10px 11px}.brand{margin-bottom:9px}.brand strong{font-size:16px}.brand small{display:none}.logo{width:31px;height:31px;font-size:19px;border-radius:9px}nav{width:100%;overflow-x:auto;justify-content:flex-start;scrollbar-width:thin}nav button{font-size:11px;flex:1;padding:9px 8px}body{height:100dvh}}
-</style>
+<meta name="theme-color" content="#f6f7fb">
+<meta name="description" content="MuaazMed • Wits GEMP1 Integrated End-of-Year Exam: 66 core conditions, case-cluster practice, 120-question mocks and progress tracking.">
+<title>MuaazMed — Master your GEMP1 finals</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/main.css?v=4">
 </head>
 <body>
-<header>
- <a class="brand" href="#eye"><span class="logo">M</span><span><strong>muaazmed.</strong><small>Wits GEMP1 learning platform</small></span></a>
- <nav aria-label="Learning modules">
-  <button type="button" data-course="eye" aria-current="page">✦ EYE Finals</button>
-  <button type="button" data-course="renal">Renal</button>
-  <button type="button" data-course="git">GIT</button>
-  <button type="button" data-course="pastpapers">Past Papers</button>
-  <button type="button" data-course="msk">MSK</button>
- </nav>
- <div class="right"><b id="courseTitle">End-of-Year Integrated Assessment</b><span id="courseMeta">Clinical clusters · 120-question practice papers · Study notes</span></div>
-</header>
-<main><iframe id="courseFrame" title="MuaazMed learning module" src="eye.html" allow="clipboard-write"></iframe></main>
-<noscript><p>JavaScript is required for tab navigation. Open <a href="eye.html">EYE</a>, <a href="legacy.html">existing Renal/GIT/Past Papers</a> or <a href="msk.html">MSK</a>.</p></noscript>
-<script>
-(function(){
- const courses={
-  eye:{url:"eye.html",title:"End-of-Year Integrated Assessment",meta:"Clinical case clusters · Timed EYE papers"},
-  renal:{url:"legacy.html#renal",title:"Renal",meta:"Lectures · Quizzes · Summaries"},
-  git:{url:"legacy.html#git",title:"GIT",meta:"Lectures · Quizzes · Summaries"},
-  pastpapers:{url:"legacy.html#pastpapers",title:"Past Papers",meta:"GEMP1 past papers and review"},
-  msk:{url:"msk.html",title:"MSK",meta:"Musculoskeletal learning and revision"}
- };
- const frame=document.getElementById("courseFrame");
- const title=document.getElementById("courseTitle");
- const meta=document.getElementById("courseMeta");
- const tabs=Array.from(document.querySelectorAll("[data-course]"));
- function navigate(name,fromHash){
-  if(!Object.prototype.hasOwnProperty.call(courses,name))name="eye";
-  const item=courses[name];
-  tabs.forEach(tab=>{const current=tab.dataset.course===name;if(current)tab.setAttribute("aria-current","page");else tab.removeAttribute("aria-current")});
-  title.textContent=item.title;meta.textContent=item.meta;
-  if(frame.getAttribute("src")!==item.url)frame.setAttribute("src",item.url);
-  frame.title="MuaazMed — "+item.title;
-  if(!fromHash && location.hash!=="#"+name)history.replaceState(null,"","#"+name);
- }
- tabs.forEach(tab=>tab.addEventListener("click",()=>navigate(tab.dataset.course,false)));
- window.addEventListener("hashchange",()=>navigate(location.hash.slice(1),true));
- navigate(location.hash.slice(1)||"eye",true);
-})();
-</script>
+<div class="app-shell">
+ <aside class="sidebar" id="sidebar">
+  <a class="brand" href="#home" aria-label="MuaazMed Home"><span class="brand-mark">M<span class="brand-pulse">+</span></span><span class="brand-text">muaazmed<span>.</span><small>THE WITS STUDY SPACE</small></span></a>
+  <div class="term-pill"><span class="live-dot"></span> GEMP1 · EXAM PREP 2026</div>
+  <div class="nav-section">YOUR WORKSPACE</div>
+  <nav class="nav-stack" aria-label="Primary navigation">
+   <a data-nav="home" href="#home"><span class="nav-icon">⌂</span> Overview</a>
+   <a data-nav="notes" href="#notes"><span class="nav-icon">▤</span> Core condition notes <span class="nav-count">66</span></a>
+   <a data-nav="cases" href="#cases"><span class="nav-icon">◈</span> Clinical case bank</a>
+   <a data-nav="mocks" href="#mocks"><span class="nav-icon">▣</span> Mock exam centre</a>
+   <a data-nav="leaderboard" href="#leaderboard"><span class="nav-icon">✧</span> Scoreboard</a>
+   <a data-nav="lectures" href="#lectures"><span class="nav-icon">▥</span> Lecture library</a>
+  </nav>
+  <div class="nav-section">MORE MUA AZMED</div>
+  <nav class="nav-stack" aria-label="Other study modules">
+   <a href="legacy.html#renal" target="_blank" rel="noopener"><span class="nav-icon">◌</span> Renal platform <span class="external-mark">↗</span></a>
+   <a href="legacy.html#git" target="_blank" rel="noopener"><span class="nav-icon">◌</span> GIT platform <span class="external-mark">↗</span></a>
+   <a href="legacy.html#pastpapers" target="_blank" rel="noopener"><span class="nav-icon">◌</span> Past papers <span class="external-mark">↗</span></a>
+   <a href="msk.html" target="_blank" rel="noopener"><span class="nav-icon">◌</span> MSK platform <span class="external-mark">↗</span></a>
+  </nav>
+  <div class="sidebar-bottom">
+   <div class="focus-card"><div class="tiny-tag">YOUR TARGET</div><b>90%+ starts here.</b><p>Prioritise mechanisms, red flags and safe next steps — then practise in clinical clusters.</p><a href="#mocks">Start practising <span>↗</span></a></div>
+   <button class="account-sidebar" data-action="account"><span class="avatar">G</span><span class="account-identity"><strong id="side-name">Guest student</strong><small id="side-status">Progress saved on this device</small></span><span>⚙</span></button>
+  </div>
+ </aside>
+ <div class="main-column">
+  <header class="topbar">
+   <div class="topbar-left"><button class="mobile-menu" data-action="menu" aria-label="Toggle menu">☰</button><span class="breadcrumb">MUA AZMED <span class="slash">/</span> <span id="crumb">Dashboard</span></span></div>
+   <div class="topbar-right"><span class="desktop-chip"><span class="live-dot"></span> BUILT FOR WITS GEMP1</span><button class="icon-button" data-action="search" aria-label="Search notes">⌕</button><button class="header-account" data-action="account"><span class="small-avatar" id="top-avatar">G</span><span id="top-identity">Guest mode</span><span class="down-chev">⌄</span></button></div>
+  </header>
+  <main class="content" id="view" tabindex="-1"><div class="loading-view">Loading the GEMP1 revision space…</div></main>
+  <footer class="site-footer"><span>MuaazMed © 2026 · Independent student revision tool, not affiliated with Wits.</span><span>Clinical education only · Original practice ≠ official examination questions.</span></footer>
+ </div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="modal-root"></div>
+<div id="drawer-root"></div>
+<script defer src="backend-config.js"></script>
+<script defer src="data/core-part-a.js"></script>
+<script defer src="data/core-part-b.js"></script>
+<script defer src="data/core-part-c.js"></script>
+<script defer src="data/bank.js"></script>
+<script defer src="data/extra-part-a.js"></script>
+<script defer src="data/extra-part-b.js"></script>
+<script defer src="assets/app.js?v=4"></script>
 </body>
 </html>
