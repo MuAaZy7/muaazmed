@@ -14,8 +14,26 @@ const CORE_MAP={
  6:["Upper GI Bleed","Peptic Ulcer Disease"],20:["Aplastic Anaemia"],
  10:["Iron Deficiency Anaemia"],27:["Stroke"]
 };
-const MODULES=["All","Emergency","BCMH","CVS","Respiratory","Renal","GIT","MSK","Haem / Cancer","Cancer","Paediatrics","Neuro"];
-const MODULE_ICON={"Emergency":"✚","BCMH":"◈","CVS":"♡","Respiratory":"◉","Renal":"◇","GIT":"≈","MSK":"✳","Haem / Cancer":"◈","Cancer":"✦","Paediatrics":"☼","Neuro":"☷"};
+const MODULE_ICON={"BCMH":"◈","CVS":"♡","Respiratory":"◉","Renal":"◇","GIT":"≈","MSK":"✳","Haem/Onc":"✦"};
+/* User-provided GEMP1 study organisation; the official guide does not prescribe this paper split. */
+const PAPER_GROUPS=window.MED_PAPER_GROUPS?.papers||[];
+const SUBJECTS=["BCMH","CVS","Respiratory","Renal","GIT","MSK","Haem/Onc"];
+const STUDY_TAGS=new Map();
+for(const p of PAPER_GROUPS)for(const s of p.subjects)for(const name of s.conditions){
+ const key=String(name).toLowerCase(), tags=STUDY_TAGS.get(key)||[];
+ tags.push({paper:p.paper,subject:s.name});STUDY_TAGS.set(key,tags);
+}
+function tagsFor(name){return STUDY_TAGS.get(String(name||"").toLowerCase())||[]}
+function caseTags(c){const unique=new Map();for(const name of c.coreNames||[])for(const tag of tagsFor(name))unique.set(tag.paper+"|"+tag.subject,tag);return [...unique.values()]}
+function subjectOptions(paper){return PAPER_GROUPS.filter(p=>paper==="All"||p.paper===paper).flatMap(p=>p.subjects.map(s=>s.name)).filter((s,i,a)=>a.indexOf(s)===i)}
+function selectOptions(paper,subject,subjectOnly=false){
+ const all=subjectOnly?'<option value="All">All subjects</option>':'<option value="All">Both study papers</option>';
+ const values=subjectOnly?subjectOptions(paper):PAPER_GROUPS.map(p=>p.paper);
+ return all+values.map(value=>'<option value="'+esc(value)+'"'+((subjectOnly?subject:paper)===value?" selected":"")+'>'+esc(value)+'</option>').join("");
+}
+function subjectMark(paper,subject){return '<span class="study-mini-badge">'+esc(paper)+' · '+esc(subject)+'</span>'}
+function labelsFor(name){return tagsFor(name).map(t=>subjectMark(t.paper,t.subject)).join("")}
+function caseLabel(c){const t=caseTags(c);return t.length?t.slice(0,3).map(x=>x.paper+" / "+x.subject).join(" · "):"Integrated"}
 const CASES=RAW_CASES.map(c=>Object.assign({},c,{coreNames:Array.isArray(c.core)?c.core:(c.core?[c.core]:(CORE_MAP[c.id]||[]))}));
 const CORE_CASES=CASES.filter(c=>c.coreNames.length>0);
 const KEY="muaazmed-gemp1-2026-v5";
@@ -28,7 +46,7 @@ if(!state.flashcards||typeof state.flashcards!=="object")state.flashcards={};
 if(!Array.isArray(state.mockHistory))state.mockHistory=[];
 if(!state.mockSessions||typeof state.mockSessions!=="object")state.mockSessions={};
 if(!state.caseAnswers||typeof state.caseAnswers!=="object")state.caseAnswers={};
-let filterNotes="All",filterCases="Core",filterLectures="All",searchText="",currentTimer=null,toastTimer=null;
+let filterNotes="All",notePaper="All",noteSubject="All",filterCases="Core",casePaper="All",caseSubject="All",filterLectures="All",searchText="",currentTimer=null,toastTimer=null;
 let supabase=null,authUser=null,syncTimer=null,authReady=false,communityEntries=[];
 let activeQuestion=null;
 const $=id=>document.getElementById(id);
@@ -62,15 +80,17 @@ function saveToggle(name){const idx=state.saved.indexOf(name);if(idx>=0)state.sa
 function questionStats(){const p=Object.values(state.caseAnswers);const c=p.filter(x=>x.correct).length;return {count:p.length,correct:c,percent:p.length?Math.round(c/p.length*100):0}}
 function renderHome(){
  const quiz=questionStats(),pct=progressPct(),best=bestScore();
- const modules=[["BCMH","BCMH & infections"],["CVS","Cardiovascular"],["Respiratory","Respiratory"],["Renal","Renal"],["GIT","Gastrointestinal"],["MSK","Musculoskeletal"],["Haem / Cancer","Haematology & cancer"],["Emergency","Emergencies"]];
- const subjectTiles=modules.map(([group,label])=>{const count=EYE_NOTES.filter(n=>n.category===group||(group==="Haem / Cancer"&&n.category==="Cancer")).length;const done=EYE_NOTES.filter(n=>(n.category===group||(group==="Haem / Cancer"&&n.category==="Cancer"))&&state.learned.includes(n.name)).length;return '<button class="subject-tile" data-action="module" data-module="'+esc(group)+'"><span class="subject-icon">'+iconFor(group)+'</span><span><b>'+esc(label)+'</b><small>'+done+' / '+count+' conditions revised</small></span><span class="subject-arrow">↗</span></button>'}).join("");
- $("view").innerHTML='<section class="hero"><div class="hero-copy"><div class="hero-kicker">THE GEMP1 END-OF-YEAR INTEGRATED ASSESSMENT</div><h1>Build the clinical thinking that gets you <em>exam-ready.</em></h1><p>Every red-listed GEMP1 condition. Condensed high-yield notes, 1,254 clinical flashcards, case clusters and two complete timed practice papers — organised around what Wits says it tests.</p><div class="hero-actions"><a class="btn btn-primary" href="#notes">Start learning ↗</a><a class="btn btn-soft" href="flashcards.html#flashcards">Review flashcards →</a><a class="btn btn-soft" href="#mocks">Mock exams ↗</a></div></div><div class="hero-art"><div class="orbit"><div class="hero-ring"><span>'+pct+'%<small>REVISED</small></span></div></div><span class="spark a">✦</span><span class="spark b">✧</span></div></section>'+
+ const subjectTiles=PAPER_GROUPS.map(p=>'<div class="home-paper-block"><div class="home-paper-heading"><span>'+esc(p.paper)+'</span><small>'+p.subjects.map(s=>esc(s.name)).join(' • ')+'</small></div><div class="subject-grid">'+p.subjects.map(s=>{
+   const n=s.conditions.length, done=s.conditions.filter(name=>state.learned.includes(name)).length;
+   return '<button class="subject-tile" data-action="module" data-paper="'+esc(p.paper)+'" data-subject="'+esc(s.name)+'"><span class="subject-icon">'+iconFor(s.name)+'</span><span><b>'+esc(s.name)+'</b><small>'+done+' / '+n+' conditions revised</small></span><span class="subject-arrow">↗</span></button>';
+ }).join("")+'</div></div>').join("");
+  $("view").innerHTML='<section class="hero"><div class="hero-copy"><div class="hero-kicker">THE GEMP1 END-OF-YEAR INTEGRATED ASSESSMENT</div><h1>Build the clinical thinking that gets you <em>exam-ready.</em></h1><p>Every red-listed GEMP1 condition. Condensed high-yield notes, 1,254 clinical flashcards, case clusters and two complete timed practice papers — organised around what Wits says it tests.</p><div class="hero-actions"><a class="btn btn-primary" href="#notes">Start learning ↗</a><a class="btn btn-soft" href="flashcards.html#flashcards">Review flashcards →</a><a class="btn btn-soft" href="#mocks">Mock exams ↗</a></div></div><div class="hero-art"><div class="orbit"><div class="hero-ring"><span>'+pct+'%<small>REVISED</small></span></div></div><span class="spark a">✦</span><span class="spark b">✧</span></div></section>'+
  '<section class="stat-grid">'+
  metric("◈",EYE_NOTES.length,"GEMP1 core conditions","Official red-listed scope")+
  metric("☷",CASES.length,"Clinical case clusters",totalQuestions+" practice questions")+
  metric("◇","120 × 2","Full mock papers","180 minutes each")+
  metric("✦",best==null?"—":best+"%","Your best mock score","Target: 90% or higher")+
- '</section><div class="dashboard-cols"><div><section class="panel"><div class="panel-head"><div><h2>Master the core, one system at a time</h2><p>All 66 red-marked GEMP1 conditions, grouped for fast revision.</p></div><a href="#notes" class="btn btn-sm">View all ↗</a></div><div class="subject-grid">'+subjectTiles+'</div><div class="notice">Source transparency: the 66-condition scope follows the red text in your Wits document. Summaries are original educational syntheses; case questions include student-bank contributions and separately identified original practice.</div></section></div><div><section class="panel"><div class="panel-head"><div><h2>Your revision pulse</h2><p>Your progress is private to this device in guest mode.</p></div></div><div class="progress-meta"><span>Conditions revised</span><b>'+state.learned.length+' / '+EYE_NOTES.length+'</b></div><div class="progress-track"><span style="width:'+pct+'%"></span></div><div class="rule"></div>'+
+ '</section><div class="dashboard-cols"><div><section class="panel"><div class="panel-head"><div><h2>Master the core, one system at a time</h2><p>Paper 1: BCMH, CVS, Respiratory. Paper 2: Renal, GIT, MSK, Haem/Onc.</p></div><a href="#notes" class="btn btn-sm">View all ↗</a></div>'+subjectTiles+'<div class="notice">Source transparency: the 66-condition scope follows the red text in your Wits document. Summaries are original educational syntheses; case questions include student-bank contributions and separately identified original practice.</div></section></div><div><section class="panel"><div class="panel-head"><div><h2>Your revision pulse</h2><p>Your progress is private to this device in guest mode.</p></div></div><div class="progress-meta"><span>Conditions revised</span><b>'+state.learned.length+' / '+EYE_NOTES.length+'</b></div><div class="progress-track"><span style="width:'+pct+'%"></span></div><div class="rule"></div>'+
  task("▤","Finish your next condition","Short mechanism + discriminators + red flags","#notes")+
  task("◈","Flip active-recall flashcards","1,254 cards · due and missed reviews","flashcards.html#flashcards")+
  task("◈","Reason through a case cluster","SBA, results interpretation and VSAQ","#cases")+
@@ -80,17 +100,41 @@ function renderHome(){
 function metric(icon,value,label,note){return '<div class="metric-card"><span class="metric-icon">'+icon+'</span><div class="metric-number">'+esc(value)+'</div><div class="metric-label">'+esc(label)+'</div><div class="metric-note">'+esc(note)+'</div></div>'}
 function task(icon,title,sub,link){return '<a class="task-row" href="'+link+'"><span class="task-mark">'+icon+'</span><span class="task-body"><b>'+esc(title)+'</b><small>'+esc(sub)+'</small></span><span class="task-go">→</span></a>'}
 function filterBar(section,options,active){return '<div class="filters">'+options.map(x=>'<button class="filter-pill '+(x===active?"active":"")+'" data-action="filter" data-section="'+section+'" data-value="'+esc(x)+'">'+esc(x)+'</button>').join("")+'</div>'}
-function notesFiltered(){return EYE_NOTES.filter(n=>{const group=(filterNotes==="All"||filterNotes===n.category||(filterNotes==="Haem / Cancer"&&n.category==="Cancer")||(filterNotes==="Saved"&&state.saved.includes(n.name))||(filterNotes==="To revise"&&!state.learned.includes(n.name)));const query=norm(n.name+" "+n.category+" "+n.presentation+" "+n.clues).includes(norm(searchText));return group&&query}).sort((a,b)=>a.name.localeCompare(b.name))}
-function noteCard(n){
+function notesFiltered(){
+ return EYE_NOTES.filter(n=>{
+  const tags=tagsFor(n.name),shown=tags.some(t=>(notePaper==="All"||t.paper===notePaper)&&(noteSubject==="All"||t.subject===noteSubject));
+  const status=filterNotes==="All"||(filterNotes==="Saved"&&state.saved.includes(n.name))||(filterNotes==="To revise"&&!state.learned.includes(n.name));
+  return shown&&status&&norm(n.name+" "+n.presentation+" "+n.clues+" "+tags.map(t=>t.subject).join(" ")).includes(norm(searchText));
+ }).sort((a,b)=>a.name.localeCompare(b.name));
+}
+function noteCard(n,subject){
  const saved=state.saved.includes(n.name),learned=state.learned.includes(n.name);
- return '<article class="condition-card"><div class="card-top">'+badge(n.category,"blue")+'<button class="icon-star '+(saved?"saved":"")+'" data-action="save" data-name="'+esc(n.name)+'" aria-label="Bookmark condition">'+(saved?"★":"☆")+'</button></div><h3>'+esc(n.name)+'</h3><p>'+clip(n.presentation,148)+'</p><div class="card-footer"><span>'+(learned?'<span class="is-learned">✓ Revised</span>':'<span>High-yield note</span>')+'</span><a class="card-cta" href="'+noteHash(n.name)+'">Open notes ↗</a></div></article>'
+ return '<article class="condition-card"><div class="card-top">'+badge(subject||tagsFor(n.name)[0]?.subject||"Core","blue")+'<button class="icon-star '+(saved?"saved":"")+'" data-action="save" data-name="'+esc(n.name)+'" aria-label="Bookmark condition">'+(saved?"★":"☆")+'</button></div><h3>'+esc(n.name)+'</h3><p>'+clip(n.presentation,148)+'</p><div class="card-footer"><span>'+(learned?'<span class="is-learned">✓ Revised</span>':'<span>Core note</span>')+'</span><a class="card-cta" href="'+noteHash(n.name)+'">Open notes ↗</a></div></article>';
 }
 function renderNotes(){
- $("view").innerHTML=head("YOUR EXAM SCOPE","The 66 GEMP1 core conditions","These are the red-highlighted conditions in the Wits scope. Learn the mechanism, pattern, discriminating clue, safety priority and a quick VSAQ.",'<button class="btn" data-action="export">Export progress ↗</button>')+
- '<div class="toolbar"><label class="search-field"><span>⌕</span><input id="notes-search" type="search" placeholder="Search diagnoses, presentations or mechanisms…" value="'+esc(searchText)+'" aria-label="Search conditions"></label>'+filterBar("notes",["All","To revise","Saved","Emergency","BCMH","CVS","Respiratory","Renal","GIT","MSK","Haem / Cancer","Cancer","Paediatrics","Neuro"],filterNotes)+'</div><div class="results-count" id="notes-count"></div><div class="card-grid" id="notes-cards"></div>';
+ $("view").innerHTML=head("GEMP1 CORE CONDITIONS","66 core conditions · 2 study papers","Grouped by Paper 1 (BCMH, CVS, Respiratory) and Paper 2 (Renal, GIT, MSK, Haem/Onc), following your study split. Cross-listed conditions appear under every relevant subject.",'<button class="btn" data-action="export">Export progress ↗</button>')+
+ '<div class="study-exam-notice">Study organisation only — the official Wits information guide does not confirm a fixed subject allocation per exam paper.</div>'+
+ '<div class="study-filter-toolbar"><label class="search-field"><span>⌕</span><input id="notes-search" type="search" placeholder="Search core conditions…" value="'+esc(searchText)+'" aria-label="Search conditions"></label>'+
+ '<label>Study paper<select id="notes-paper" class="select">'+selectOptions(notePaper,noteSubject)+'</select></label>'+
+ '<label>Subject<select id="notes-subject" class="select">'+selectOptions(notePaper,noteSubject,true)+'</select></label></div>'+
+ filterBar("notes",["All","To revise","Saved"],filterNotes)+
+ '<div class="results-count" id="notes-count"></div><div id="notes-cards"></div>';
  refreshNotesList();
 }
-function refreshNotesList(){const found=notesFiltered();const target=$("notes-cards");if(!target)return;target.innerHTML=found.map(noteCard).join("")||'<div class="empty"><div class="empty-symbol">⌕</div><h3>No matching conditions</h3><p>Try a different search or module filter.</p></div>';$("notes-count").textContent=found.length+" of "+EYE_NOTES.length+" conditions"}
+function refreshNotesList(){
+ const found=notesFiltered(),listed=new Set(found.map(n=>n.name)),target=$("notes-cards");if(!target)return;
+ let placements=0;
+ target.innerHTML=PAPER_GROUPS.filter(p=>notePaper==="All"||p.paper===notePaper).map(p=>{
+  const sections=p.subjects.filter(s=>noteSubject==="All"||s.name===noteSubject).map(s=>{
+   const items=s.conditions.map(name=>found.find(n=>n.name===name)).filter(Boolean);
+   if(!items.length)return "";
+   placements+=items.length;
+   return '<section class="study-subject-section"><div class="study-subject-heading"><h3>'+esc(s.name)+'</h3><span>'+items.length+' conditions</span></div><div class="card-grid">'+items.map(n=>noteCard(n,s.name)).join("")+'</div></section>';
+  }).join("");
+  return sections?'<section class="study-paper-block"><div class="study-paper-heading"><span>'+esc(p.paper)+'</span><p>'+p.subjects.map(s=>esc(s.name)).join(' · ')+'</p></div>'+sections+'</section>':"";
+ }).join("")||'<div class="empty"><h3>No matching core conditions</h3><p>Try another paper, subject or search term.</p></div>';
+ $("notes-count").textContent=found.length+" unique conditions · "+placements+" subject listings · "+EYE_NOTES.length+" core conditions total";
+}
 function relatedCases(name){return CASES.filter(c=>c.coreNames.some(n=>norm(n)===norm(name)))}
 function slidesFor(n){const wordMap={
  "Anaphylaxis":["anaphylaxis","antihistamines"],"Anaphylactic Shock":["anaphylaxis","shock"],"Tuberculosis":["tb","tuberculosis"],"HIV/AIDS":["hiv","arvs"],"Osteoporosis":["osteoporosis","bone physiology"],"Gout":["gout"],"Iron Deficiency Anaemia":["iron deficiency","anaemia"],"Ischaemic Heart Disease":["myocardial infarction","atherosclerosis","acute cardiac"],"Renal Calculi":["calculi","urology"],"Liver Cirrhosis":["chronic liver","portal hypertension"],"Cholecystitis":["cholecystitis","gallstones"],"Peptic Ulcer Disease":["peptic ulcer"],"Rheumatoid Arthritis":["rheumatoid arthritis"],"Nephritic syndrome":["glomerulonephritis","haematuria"],"Nephrotic syndrome":["nephrotic","proteinuria"],"Disseminated Intravascular Coagulation":["coagulation","haemostasis"],"Von Willebrand Disease":["coagulation","haemostasis"],"Septic Arthritis":["osteoarticular infections"],"Breast Cancer":["cancer"],"Cervical Cancer":["cancer"],"Severe Acute Malnutrition":["nutrition"]
@@ -115,15 +159,25 @@ function renderDetail(name){
  ].join("");
  const links=rels.sort((a,b)=>(a.id||0)-(b.id||0)).map((c,i)=>'<div class="linked-case"><span>◈</span><strong>Case '+(i+1)+': '+esc(c.title)+'</strong><a href="'+caseHash(c.id)+'">Practise ↗</a></div>').join("")||'<p class="tiny-note">A full case cluster is being prepared for this condition. Start with its VSAQ and use the clinical case bank for integrated practice.</p>';
  const lectures=slides.map(s=>'<div class="linked-case"><span>▥</span><strong>'+esc(s.name)+'</strong><a href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer">Slides ↗</a></div>').join("")||'<p class="tiny-note">Browse the lecture library to find supporting course material.</p>';
- $("view").innerHTML='<div class="detail-layout"><div class="detail-main"><button class="back-link" data-action="back-notes">← Back to core conditions</button><div class="detail-hero"><div class="detail-top">'+badge("GEMP1 red-listed","red")+badge(n.category,"blue")+(learned?badge("Revised ✓","green"):"")+'</div><h1>'+esc(n.name)+'</h1><p>'+esc(n.presentation)+'</p><div class="page-actions"><button class="btn '+(learned?"btn-success":"btn-primary")+'" data-action="learn" data-name="'+esc(n.name)+'">'+(learned?"✓ Marked as revised":"+ Mark as revised")+'</button><button class="btn" data-action="save" data-name="'+esc(n.name)+'">'+(saved?"★ Saved":"☆ Save note")+'</button><button class="btn btn-soft" data-action="flash-start" data-scope="condition:'+esc(n.name)+'" data-mode="All" data-limit="0">◈ Deep flashcards</button></div></div>'+sections+'<div class="notice">Study rule: be able to recognise the presentation, explain the underlying mechanism, interpret basic investigations and state the safest supervised action. These summaries are revision aids, not a replacement for your original Wits teaching material.</div></div><aside class="detail-aside"><section class="aside-box"><div class="overline">ACTIVE RECALL · FLASHCARDS</div><h3>'+Flash.statsFor(n.name).total+' cards for this condition</h3><p>Clinical recognition, mechanisms, tests, clinical data, red flags, mimics and multiple VSAQs.</p><div class="progress-meta"><span>Mastered</span><b>'+Flash.statsFor(n.name).mastered+' / '+Flash.statsFor(n.name).total+'</b></div><div class="progress-track"><span style="width:'+(Flash.statsFor(n.name).mastered/Math.max(1,Flash.statsFor(n.name).total)*100)+'%"></span></div><button class="btn btn-primary btn-wide" style="margin-top:14px" data-action="flash-start" data-scope="condition:'+esc(n.name)+'" data-mode="All" data-limit="0">Study all flashcards →</button><p class="tiny-note" style="margin-top:10px">Flip the card and rate your recall to schedule future reviews. No fixed card cap.</p></section><section class="aside-box"><h3>Linked case practice</h3>'+links+'</section><section class="aside-box"><h3>Related Wits lectures</h3>'+lectures+'</section></aside></div>';
+ $("view").innerHTML='<div class="detail-layout"><div class="detail-main"><button class="back-link" data-action="back-notes">← Back to core conditions</button><div class="detail-hero"><div class="detail-top">'+badge("GEMP1 red-listed","red")+labelsFor(n.name)+(learned?badge("Revised ✓","green"):"")+'</div><h1>'+esc(n.name)+'</h1><p>'+esc(n.presentation)+'</p><div class="page-actions"><button class="btn '+(learned?"btn-success":"btn-primary")+'" data-action="learn" data-name="'+esc(n.name)+'">'+(learned?"✓ Marked as revised":"+ Mark as revised")+'</button><button class="btn" data-action="save" data-name="'+esc(n.name)+'">'+(saved?"★ Saved":"☆ Save note")+'</button><button class="btn btn-soft" data-action="flash-start" data-scope="condition:'+esc(n.name)+'" data-mode="All" data-limit="0">◈ Deep flashcards</button></div></div>'+sections+'<div class="notice">Study rule: be able to recognise the presentation, explain the underlying mechanism, interpret basic investigations and state the safest supervised action. These summaries are revision aids, not a replacement for your original Wits teaching material.</div></div><aside class="detail-aside"><section class="aside-box"><div class="overline">ACTIVE RECALL · FLASHCARDS</div><h3>'+Flash.statsFor(n.name).total+' cards for this condition</h3><p>Clinical recognition, mechanisms, tests, clinical data, red flags, mimics and multiple VSAQs.</p><div class="progress-meta"><span>Mastered</span><b>'+Flash.statsFor(n.name).mastered+' / '+Flash.statsFor(n.name).total+'</b></div><div class="progress-track"><span style="width:'+(Flash.statsFor(n.name).mastered/Math.max(1,Flash.statsFor(n.name).total)*100)+'%"></span></div><button class="btn btn-primary btn-wide" style="margin-top:14px" data-action="flash-start" data-scope="condition:'+esc(n.name)+'" data-mode="All" data-limit="0">Study all flashcards →</button><p class="tiny-note" style="margin-top:10px">Flip the card and rate your recall to schedule future reviews. No fixed card cap.</p></section><section class="aside-box"><h3>Linked case practice</h3>'+links+'</section><section class="aside-box"><h3>Related Wits lectures</h3>'+lectures+'</section></aside></div>';
 }
 function section(icon,title,body,kind){return '<section class="detail-section '+kind+'"><h2><span>'+icon+'</span>'+esc(title)+'</h2><p>'+esc(body)+'</p></section>'}
 function renderCases(){
- let found=CASES.filter(c=>filterCases==="All"||(filterCases==="Core"?c.coreNames.length>0:filterCases==="Extension"?c.coreNames.length===0:norm(c.module).includes(norm(filterCases))));
- if(searchText)found=found.filter(c=>norm(c.title+" "+c.module+" "+c.coreNames.join(" ")+" "+c.scenario).includes(norm(searchText)));
- $("view").innerHTML=head("CLINICAL REASONING","Think in clinical clusters","Each of the 66 red-listed conditions has at least two linked case clusters. Practise mechanisms, discrimination, data, safety and VSAQs in original and student-contributed cases; not official Wits exams.",'<a class="btn btn-primary" href="#mocks">Full mocks ↗</a>')+
- '<div class="toolbar"><label class="search-field"><span>⌕</span><input id="cases-search" type="search" aria-label="Search case bank" placeholder="Search clinical presentations…" value="'+esc(searchText)+'"></label>'+filterBar("cases",["Core","All","Extension","BCMH","CVS","Respiratory","Renal","GIT","MSK","Haem / Cancer","Paediatrics"],filterCases)+'</div><p class="tiny-note">'+found.length+' clusters shown · '+found.reduce((a,c)=>a+c.questions.length,0)+' questions · Original cases are not official Wits questions.</p>'+
- '<div class="case-list">'+found.map(c=>'<article class="case-card"><div class="card-top">'+badge(c.module,"blue")+badge(c.coreNames.length?"Core linked":"Integrated context",c.coreNames.length?"green":"amber")+'</div><small>'+esc(c.source||"Student teaching bank")+' · '+c.questions.length+' questions</small><h3>'+esc(c.title)+'</h3><p>'+clip(c.scenario,165)+'</p><div class="card-footer"><span>'+c.questions.filter(q=>q.type==="VSAQ").length+' VSAQ · '+c.questions.filter(q=>q.type==="SBA").length+' SBA</span><a class="card-cta" href="'+caseHash(c.id)+'">Start case ↗</a></div></article>').join("")+'</div>';
+ let found=CASES.filter(c=>{
+  const tags=caseTags(c);
+  const scope=filterCases==="All"||(filterCases==="Core"?c.coreNames.length>0:filterCases==="Extension"?c.coreNames.length===0:true);
+  const paper=casePaper==="All"||tags.some(t=>t.paper===casePaper);
+  const subject=caseSubject==="All"||tags.some(t=>t.subject===caseSubject&&(casePaper==="All"||t.paper===casePaper));
+  const query=!searchText||norm(c.title+" "+c.module+" "+c.coreNames.join(" ")+" "+c.scenario).includes(norm(searchText));
+  return scope&&paper&&subject&&query;
+ });
+ $("view").innerHTML=head("CLINICAL REASONING","Clinical case clusters by paper and subject","Every red-listed condition has at least two linked cases. The Paper 1 / Paper 2 split is your study organisation, not an official Wits exam-content guarantee.",'<a class="btn btn-primary" href="#mocks">Full mocks ↗</a>')+
+ '<div class="study-filter-toolbar"><label class="search-field"><span>⌕</span><input id="cases-search" type="search" aria-label="Search case bank" placeholder="Search clinical cases…" value="'+esc(searchText)+'"></label>'+
+ '<label>Study paper<select id="cases-paper" class="select">'+selectOptions(casePaper,caseSubject)+'</select></label>'+
+ '<label>Subject<select id="cases-subject" class="select">'+selectOptions(casePaper,caseSubject,true)+'</select></label></div>'+
+ filterBar("cases",["Core","All","Extension"],filterCases)+
+ '<p class="tiny-note">'+found.length+' clusters · '+found.reduce((a,c)=>a+c.questions.length,0)+' practice questions. Original/student-derived cases are not official Wits questions.</p>'+
+ '<div class="case-list">'+found.map(c=>'<article class="case-card"><div class="card-top">'+badge(caseTags(c)[0]?.subject||"Integrated","blue")+badge(c.coreNames.length?"Core linked":"Integrated context",c.coreNames.length?"green":"amber")+'</div><small>'+esc(caseLabel(c))+' · '+c.questions.length+' questions</small><h3>'+esc(c.title)+'</h3><p>'+clip(c.scenario,165)+'</p><div class="card-footer"><span>'+c.questions.filter(q=>q.type==="VSAQ").length+' VSAQ · '+c.questions.filter(q=>q.type==="SBA").length+' SBA</span><a class="card-cta" href="'+caseHash(c.id)+'">Start case ↗</a></div></article>').join("")+'</div>';
 }
 function renderCase(id,idx){
  const c=CASES.find(x=>String(x.id)===String(id));if(!c){goto("#cases");return}
@@ -132,7 +186,7 @@ function renderCase(id,idx){
  '<div><p class="tiny-note">Answer in 1–3 words. You can check the expected answer after submitting.</p><input class="input" style="width:100%" id="case-free" placeholder="Very short answer…" value="'+esc(saved?.answer||"")+'" '+(saved?"disabled":"")+'><div style="margin-top:10px"><button class="btn btn-primary btn-sm" data-action="answer-vsaq" data-case="'+c.id+'" data-index="'+idx+'" '+(saved?"disabled":"")+'>Check answer</button></div></div>';
  const expl=saved?'<div class="q-explanation"><h4>'+((q.type==="VSAQ"||saved.correct)?"✓ Answer & reasoning":"Review the reasoning")+'</h4><p><strong>Expected: '+esc(q.type==="SBA"?q.options["ABCD".indexOf(q.answer)]:q.answer)+'.</strong> '+esc(q.explain||q.point||"")+'</p></div>':"";
  const palette=c.questions.map((x,i)=>{const f=state.caseAnswers[qrKey(c,x)],fl=state.flags[qrKey(c,x)];return '<button class="'+(i===idx?"active ":"")+(f?(f.correct?"answered":"wrong"):"")+(fl?" flagged":"")+'" data-action="case-jump" data-case="'+c.id+'" data-index="'+i+'">'+(i+1)+'</button>'}).join("");
- $("view").innerHTML='<div class="case-layout"><div><button class="back-link" data-action="back-cases">← Back to clinical case bank</button><div class="scenario"><div class="overline">CLINICAL CASE · '+esc(c.module)+'</div><h2>'+esc(c.title)+'</h2><p>'+esc(c.scenario)+'</p></div><div class="question-panel"><div class="q-progress"><span>QUESTION '+(idx+1)+' OF '+c.questions.length+'</span>'+badge(q.type==="VSAQ"?"VSAQ · 1–3 words":q.isData?"Results interpretation":"SBA · 4 options","blue")+'</div><h2>'+esc(q.q)+'</h2>'+opts+expl+'<div class="question-foot"><button class="btn btn-sm" data-action="flag" data-key="'+esc(key)+'">'+(flag?"⚑ Flagged":"⚐ Flag for review")+'</button><div class="page-actions"><button class="btn btn-sm" data-action="case-jump" data-case="'+c.id+'" data-index="'+(idx-1)+'" '+(idx===0?"disabled":"")+'>← Previous</button><button class="btn btn-primary btn-sm" data-action="case-jump" data-case="'+c.id+'" data-index="'+(idx+1)+'" '+(idx===c.questions.length-1?"disabled":"")+'>Next →</button></div></div>'+(saved?'<button class="btn btn-soft btn-sm" style="margin-top:15px" data-action="ask-ai" data-case="'+c.id+'" data-index="'+idx+'">✦ Ask the AI tutor about this question</button>':'<p class="tiny-note" style="margin-top:15px">Answer first to unlock the rationale and AI tutor.</p>')+'</div></div><aside class="q-side"><div class="aside-box"><h3>Question navigator</h3><p class="tiny-note">Choose a question; green means answered correctly.</p><div class="q-palette">'+palette+'</div><div class="progress-track"><span style="width:'+Math.round(100*c.questions.filter(x=>state.caseAnswers[qrKey(c,x)]).length/c.questions.length)+'%"></span></div><p class="tiny-note">'+c.questions.filter(x=>state.caseAnswers[qrKey(c,x)]).length+' of '+c.questions.length+' completed</p><div class="rule"></div><p class="tiny-note"><strong>Source:</strong> '+esc(c.source||"Student teaching bank")+'</p><p class="tiny-note">These questions are practice material and have not been verified as official Wits items.</p></div></aside></div>';
+ $("view").innerHTML='<div class="case-layout"><div><button class="back-link" data-action="back-cases">← Back to clinical case bank</button><div class="scenario"><div class="overline">CLINICAL CASE · '+esc(caseLabel(c))+'</div><h2>'+esc(c.title)+'</h2><p>'+esc(c.scenario)+'</p></div><div class="question-panel"><div class="q-progress"><span>QUESTION '+(idx+1)+' OF '+c.questions.length+'</span>'+badge(q.type==="VSAQ"?"VSAQ · 1–3 words":q.isData?"Results interpretation":"SBA · 4 options","blue")+'</div><h2>'+esc(q.q)+'</h2>'+opts+expl+'<div class="question-foot"><button class="btn btn-sm" data-action="flag" data-key="'+esc(key)+'">'+(flag?"⚑ Flagged":"⚐ Flag for review")+'</button><div class="page-actions"><button class="btn btn-sm" data-action="case-jump" data-case="'+c.id+'" data-index="'+(idx-1)+'" '+(idx===0?"disabled":"")+'>← Previous</button><button class="btn btn-primary btn-sm" data-action="case-jump" data-case="'+c.id+'" data-index="'+(idx+1)+'" '+(idx===c.questions.length-1?"disabled":"")+'>Next →</button></div></div>'+(saved?'<button class="btn btn-soft btn-sm" style="margin-top:15px" data-action="ask-ai" data-case="'+c.id+'" data-index="'+idx+'">✦ Ask the AI tutor about this question</button>':'<p class="tiny-note" style="margin-top:15px">Answer first to unlock the rationale and AI tutor.</p>')+'</div></div><aside class="q-side"><div class="aside-box"><h3>Question navigator</h3><p class="tiny-note">Choose a question; green means answered correctly.</p><div class="q-palette">'+palette+'</div><div class="progress-track"><span style="width:'+Math.round(100*c.questions.filter(x=>state.caseAnswers[qrKey(c,x)]).length/c.questions.length)+'%"></span></div><p class="tiny-note">'+c.questions.filter(x=>state.caseAnswers[qrKey(c,x)]).length+' of '+c.questions.length+' completed</p><div class="rule"></div><p class="tiny-note"><strong>Source:</strong> '+esc(c.source||"Student teaching bank")+'</p><p class="tiny-note">These questions are practice material and have not been verified as official Wits items.</p></div></aside></div>';
 }
 function mockCaseOrder(){
  const byModule={};for(const c of CORE_CASES){const m=c.module;if(!byModule[m])byModule[m]=[];byModule[m].push(c)}
@@ -219,7 +273,7 @@ function renderLectures(){
  $("view").innerHTML=head("SOURCE LIBRARY","Wits lecture bank","Direct Google Drive lecture links supplied for GEMP1 revision. These are references — this website does not redistribute the slide PDFs.",'<a class="btn btn-primary" href="https://drive.google.com/drive/folders/185j-AM_bQrW6duNPT5NQIGCTzxQ_8yD8" target="_blank" rel="noopener">Open Drive folder ↗</a>')+
  '<div class="toolbar"><label class="search-field"><span>⌕</span><input id="lectures-search" type="search" aria-label="Search lectures" placeholder="Find lecture titles…" value="'+esc(searchText)+'"></label><select id="lecture-module" class="select" aria-label="Select lecture module">'+choices.map(x=>'<option value="'+esc(x)+'" '+(x===filterLectures?"selected":"")+'>'+esc(x)+'</option>').join("")+'</select></div><p class="tiny-note">'+slides.length+' lecture references shown</p><div class="lectures-list">'+slides.map(s=>'<a class="lecture-item" href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer"><span>▥</span><div><b>'+esc(s.name)+'</b><small>'+esc(s.module)+'</small></div><span>↗</span></a>').join("")+'</div>';
 }
-const Flash=window.createMuaazFlashcards({notes:EYE_NOTES,getState:()=>state,save,goto,view:()=>$("view"),esc,norm,badge,toast,render});
+const Flash=window.createMuaazFlashcards({notes:EYE_NOTES,studyGroups:window.MED_PAPER_GROUPS,getState:()=>state,save,goto,view:()=>$("view"),esc,norm,badge,toast,render});
 function render(){clearInterval(currentTimer);let r=decodeURIComponent(location.hash.replace(/^#/,"")||"home").split("/");let page=r[0]||"home";if(!["home","notes","note","cases","case","mocks","mock","result","leaderboard","lectures","flashcards","study"].includes(page))page="home";setCrumb(page);setIdentity();
  try{
   if(page==="home")renderHome();
@@ -280,7 +334,7 @@ document.addEventListener("click",e=>{
   if(action==="export")exportProgress();
   if(action==="load-board")loadLeaderboard();
   return}
- if(action==="module"){filterNotes=el.dataset.module;searchText="";goto("#notes");return}
+ if(action==="module"){notePaper=el.dataset.paper||"All";noteSubject=el.dataset.subject||"All";filterNotes="All";searchText="";goto("#notes");return}
  if(action==="filter"){const section=el.dataset.section;if(section==="notes")filterNotes=el.dataset.value;else if(section==="cases")filterCases=el.dataset.value;render();return}
  if(action==="learn"){learnToggle(el.dataset.name);return}
  if(action==="save"){saveToggle(el.dataset.name);return}
@@ -315,7 +369,11 @@ document.addEventListener("input",e=>{
  if(t.id==="lectures-search"){searchText=t.value;renderLectures();const input=$("lectures-search");if(input){input.focus();input.setSelectionRange(searchText.length,searchText.length)}}
  if(t.id==="mock-free"){const p=t.dataset.paper,s=state.mockSessions[p];if(s&&s.status==="active"){const item=MOCKS[p][s.index];s.answers[item.id]=t.value;save()}}
 });
-document.addEventListener("change",e=>{if(Flash.handleChange(e.target))return;if(e.target.id==="lecture-module"){filterLectures=e.target.value;renderLectures()}});
+document.addEventListener("change",e=>{if(Flash.handleChange(e.target))return;if(e.target.id==="lecture-module"){filterLectures=e.target.value;renderLectures()}
+ if(e.target.id==="notes-paper"){notePaper=e.target.value;noteSubject="All";renderNotes()}
+ if(e.target.id==="notes-subject"){noteSubject=e.target.value;refreshNotesList()}
+ if(e.target.id==="cases-paper"){casePaper=e.target.value;caseSubject="All";renderCases()}
+ if(e.target.id==="cases-subject"){caseSubject=e.target.value;renderCases()}});
 window.addEventListener("hashchange",()=>{searchText="";$("sidebar")?.classList.remove("open");window.scrollTo({top:0,behavior:"auto"});render()});
 window.addEventListener("keydown",e=>{if(Flash.handleKey(e))return;if(e.key==="Escape")closeModal()});
 window.addEventListener("beforeunload",()=>{clearInterval(currentTimer)});

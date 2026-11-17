@@ -90,3 +90,14 @@ Then open localhost:8000. JavaScript syntax: node --check assets/app.js
 - Each condition now links to at least two cases, and the core study notes link to its deep flashcards.
 - Two timed 120-mark/180-minute mock papers are preserved and continue drawing separate clusters from the core pool.
 - Review clinical accuracy of new material before relying on it for high-stakes assessment.
+
+## Core-condition study grouping (2026 GEMP1)
+
+The site now presents core notes, flashcard decks and case-cluster filters under exactly seven subject headings:
+
+- **Study Paper 1:** BCMH (14), CVS (12), Respiratory (12)
+- **Study Paper 2:** Renal (10), GIT (20), MSK (11), Haem/Onc (12)
+
+These are 91 subject placements covering **66 unique red-highlighted core conditions**; overlapping conditions are shown in multiple study subjects. Bone Tumour (Osteosarcoma) appears in both MSK and Haem/Onc because it bridges the two topics. This categorisation is derived from the user-supplied `GEMP1_Core_Conditions_by_Paper-3 2.pdf`, with MSK and Haem/Onc divided for navigation. **The official Wits student information guide does not guarantee which subject is tested in which paper.** The mock papers remain independent, mixed practice selections.
+
+The Flashcards section no longer depends on browser 3D back-face rendering: revealing an answer displays a high-contrast white card with large dark text. Cards still flip conceptually (question → answer), accept Again/Hard/Good/Easy ratings and retain existing review scheduling. This change does not reset guest or account progress.
