@@ -1,0 +1,55 @@
+/* GEMP1 user-supplied paper/subject study grouping + readable flashcard face */
+.study-exam-notice{background:#f3f6fb;border:1px solid #d7deef;border-left:4px solid #6474c3;border-radius:11px;padding:13px 15px;margin:12px 0 21px;color:#334968;font-size:12px;line-height:1.65;font-weight:550}
+.study-paper-block{margin:24px 0 34px;padding:21px;border-radius:20px;background:#f9fafe;border:1px solid #e0e7f1}
+.study-paper-heading{display:flex;align-items:center;gap:13px;flex-wrap:wrap;padding-bottom:17px;margin-bottom:19px;border-bottom:1px solid #dce4f1}
+.study-paper-heading>span{display:inline-flex;background:#233864;color:#fff;border-radius:9px;padding:10px 15px;font-size:14px;font-weight:850;letter-spacing:.5px}
+.study-paper-heading>p{font-size:12px;color:#63738a;margin:0;font-weight:700}
+.study-subject-section{margin:18px 0 27px}
+.study-subject-section:last-child{margin-bottom:3px}
+.study-subject-heading{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+.study-subject-heading h3{font-size:17px;letter-spacing:-.5px;color:#172e4c;margin:0}
+.study-subject-heading>span{font-size:11px;color:#576b86;background:#eaf0fb;border-radius:22px;padding:5px 10px}
+.study-subject-section>.card-grid,.study-subject-section>.flash-condition-grid{margin-bottom:7px}
+.study-filter-toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;padding:18px;border:1px solid #e3e8f1;background:white;border-radius:16px;margin:18px 0}
+.study-filter-toolbar .search-field{min-width:230px;flex:2 1 250px;margin:0}
+.study-filter-toolbar>label:not(.search-field){display:flex;flex-direction:column;gap:6px;flex:1 1 170px;font-size:11px;font-weight:750;color:#4d607c}
+.study-filter-toolbar select{appearance:auto;width:100%;border:1px solid #d4ddeb;background:#fff;border-radius:9px;padding:10px 11px;min-height:43px;font-size:12px;color:#183451;font-weight:650}
+.study-mini-badge{display:inline-flex;align-items:center;padding:5px 9px;border-radius:6px;background:#e6ecfc;color:#2d4685;font-size:10px;font-weight:800;letter-spacing:.05px}
+.detail-top{flex-wrap:wrap}
+.home-paper-block{margin-bottom:22px}
+.home-paper-block:last-child{margin-bottom:0}
+.home-paper-heading{display:flex;flex-wrap:wrap;align-items:center;gap:11px;margin-bottom:13px}
+.home-paper-heading>span{background:#24365f;color:white;border-radius:8px;padding:7px 11px;font-size:12px;font-weight:800}
+.home-paper-heading>small{font-size:11px;color:#6d7890}
+.home-paper-block .subject-grid{margin-top:0}
+/* The original 3D rotated card could make back-face text unreadable.
+   Use one clear text face instead: no 3D flip, transparency or clipped text. */
+.flash-card-wrap{height:auto!important;min-height:320px;perspective:none!important;display:block;margin:0 0 18px}
+.flash-card-surface{appearance:none;-webkit-appearance:none;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:22px;min-height:330px;width:100%;max-width:100%;border-radius:23px;padding:35px 38px;cursor:pointer;box-shadow:0 13px 32px rgba(30,46,84,.12);white-space:normal;overflow-wrap:anywhere;word-break:normal;line-height:normal;transition:box-shadow .15s}
+.flash-card-surface:focus-visible{outline:4px solid #589edb;outline-offset:3px}
+.flash-card-surface.question{background:#233968;border:2px solid #223864;color:#fff}
+.flash-card-surface.answer{background:#fff!important;border:3px solid #319679!important;color:#142b43!important;box-shadow:0 14px 34px rgba(24,90,75,.13)}
+.flash-card-surface .flash-face-overline{display:block;position:static;opacity:1;font-size:11px;font-weight:900;letter-spacing:1.3px;margin:0;line-height:1.4}
+.flash-card-surface.question .flash-face-overline{color:#e1e7fa}
+.flash-card-surface.answer .flash-face-overline{color:#15684e!important}
+.flash-card-surface .flash-prompt{display:block;color:#fff!important;font-weight:790;font-size:clamp(21px,2.7vw,29px);line-height:1.42;max-width:100%;margin:0;letter-spacing:-.02em}
+.flash-card-surface .flash-answer{display:block;color:#10263d!important;font-weight:810!important;font-size:clamp(23px,3.2vw,34px)!important;line-height:1.55!important;max-width:100%;opacity:1!important;text-shadow:none!important;margin:0!important;letter-spacing:-.014em!important;white-space:normal!important}
+.flash-card-surface .flash-card-hint{position:static;display:block;color:#e0e7fb!important;font-size:12px;line-height:1.5;margin:0;font-weight:550;letter-spacing:0;opacity:1}
+.flash-card-surface.answer .flash-card-hint{color:#4c627c!important}
+.flash-rating-area{border:1px solid #cad8ed}
+.flash-rating-title{color:#384d66;font-size:13px;font-weight:750}
+@media(max-width:680px){
+.study-paper-block{padding:13px;border-radius:16px}
+.study-paper-heading{gap:9px;margin-bottom:13px}
+.study-paper-heading>span{font-size:13px}
+.study-filter-toolbar{padding:13px;gap:9px}
+.study-filter-toolbar>.search-field{flex-basis:100%;min-width:0}
+.study-filter-toolbar>label:not(.search-field){min-width:0;flex-basis:calc(50% - 7px)}
+.study-subject-heading h3{font-size:16px}
+.flash-card-wrap{min-height:330px}
+.flash-card-surface{min-height:330px;padding:26px 18px;gap:19px;border-radius:18px}
+.flash-card-surface .flash-answer{font-size:clamp(21px,5.8vw,27px)!important;line-height:1.48!important}
+.flash-card-surface .flash-prompt{font-size:clamp(20px,5.5vw,25px)!important}
+.flash-card-surface .flash-card-hint{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){.flash-card-surface{transition:none}}

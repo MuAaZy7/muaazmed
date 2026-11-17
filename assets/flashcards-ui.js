@@ -4,7 +4,11 @@
  */
 window.createMuaazFlashcards=function(env){
  "use strict";
- const {notes,getState,save,goto,view,esc,norm,badge,toast,render}=env;
+ const {notes,studyGroups,getState,save,goto,view,esc,norm,badge,toast,render}=env;
+ const papers=studyGroups?.papers||[];
+ const indexed=new Map();
+ for(const p of papers)for(const s of p.subjects)for(const name of s.conditions){const x=indexed.get(name)||[];x.push({paper:p.paper,subject:s.name});indexed.set(name,x)}
+ const tags=name=>indexed.get(name)||[];
  const seeds=Array.isArray(window.MED_FLASHCARD_SEEDS)?window.MED_FLASHCARD_SEEDS:[];
  const base=seeds.flatMap((seed,i)=>{
   const note=notes.find(n=>n.name===seed.name);if(!note)return[];
@@ -28,7 +32,15 @@ window.createMuaazFlashcards=function(env){
  const record=c=>safeState().flashcards[c.id]||null;
  const due=(c,now=Date.now())=>{const r=record(c);return !r||!Number.isFinite(r.dueAt)||r.dueAt<=now};
  const mastered=c=>{const r=record(c);return !!r&&r.reps>=3&&r.intervalDays>=14&&["Good","Easy"].includes(r.lastRating)};
- const deckFor=x=>all.filter(c=>x==="All"||(x.startsWith("module:")?c.module===x.slice(7):x.startsWith("condition:")?c.name===x.slice(10):false));
+ const deckFor=x=>all.filter(c=>{
+  if(x==="All")return true;
+  if(x.startsWith("condition:"))return c.name===x.slice(10);
+  if(x.startsWith("paper:"))return tags(c.name).some(t=>t.paper===x.slice(6));
+  if(x.startsWith("subject:"))return tags(c.name).some(t=>t.subject===x.slice(8));
+  if(x.startsWith("paper-subject:")){const parts=x.slice(14).split("|");return tags(c.name).some(t=>t.paper===parts[0]&&t.subject===parts[1]);}
+  if(x.startsWith("module:"))return tags(c.name).some(t=>t.subject===x.slice(7));
+  return false;
+ });
  const stats=cards=>({total:cards.length,due:cards.filter(c=>due(c)).length,seen:cards.filter(c=>record(c)).length,mastered:cards.filter(mastered).length});
  const statsFor=name=>stats(deckFor("condition:"+name));
  const selected=()=>safeState().flashSession;
@@ -70,38 +82,55 @@ window.createMuaazFlashcards=function(env){
  }
  function option(value,label,chosen){return '<option value="'+esc(value)+'"'+(value===chosen?" selected":"")+'>'+esc(label)+'</option>'}
  function menu(){
-  let html=option("All","All 66 core conditions",scope);
-  for(const m of [...new Set(notes.map(n=>n.category))].sort())html+=option("module:"+m,m,scope);
+  let html=option("All","Both papers · All 66 core conditions",scope);
+  for(const p of papers){
+   html+='<optgroup label="'+esc(p.paper)+'">';
+   html+=option("paper:"+p.paper,p.paper+" · all subjects",scope);
+   for(const s of p.subjects)html+=option("paper-subject:"+p.paper+"|"+s.name,p.paper+" · "+s.name,scope);
+   html+='</optgroup>';
+  }
+  html+='<optgroup label="Individual core conditions">';
   for(const n of [...notes].sort((a,b)=>a.name.localeCompare(b.name)))html+=option("condition:"+n.name,n.name,scope);
+  html+='</optgroup>';
   return html;
  }
  function metric(icon,title,value){return '<div class="flash-metric"><span class="glyph">'+icon+'</span><b>'+value+'</b><small>'+title+'</small></div>'}
  function overview(){
   const s=stats(all);
   view().innerHTML='<div class="flash-hero"><div><div class="overline">ACTIVE RECALL · SPACED REVISION</div><h1>Know it <em style="font-style:normal;color:#4e58c5">before</em> you flip.</h1><p>'+all.length+' high-yield flashcards across 66 red-listed GEMP1 conditions. Recognise clinical patterns, explain mechanisms, select investigations, flag emergencies and distinguish lookalikes. Rate recall to schedule the next review.</p></div><div class="flash-burst" aria-hidden="true">◈</div></div>'+
-   '<div class="flash-metric-grid">'+metric("▤","Flashcards",s.total)+metric("◷","Due for review",s.due)+metric("◎","Studied at least once",s.seen)+metric("✦","Mastered",s.mastered)+'</div>'+
-   '<section class="panel"><div class="panel-head"><div><h2>Create a review session</h2><p>Choose a system or individual disease, then start with new, due or missed cards.</p></div>'+badge("Deep decks · no six-card limit","blue")+'</div>'+
+   '<div class="study-exam-notice">This paper-by-subject layout follows your study split. The official Wits guide does not confirm a fixed distribution of conditions between examination papers.</div><div class="flash-metric-grid">'+metric("▤","Flashcards",s.total)+metric("◷","Due for review",s.due)+metric("◎","Studied at least once",s.seen)+metric("✦","Mastered",s.mastered)+'</div>'+
+   '<section class="panel"><div class="panel-head"><div><h2>Create a review session</h2><p>Choose a study paper, subject or individual disease, then review due, new or missed cards.</p></div>'+badge("Deep decks · no six-card limit","blue")+'</div>'+
    '<div class="flash-controls"><label class="flash-field">Deck<select id="flash-scope">'+menu()+'</select></label>'+
    '<label class="flash-field">Review mode<select id="flash-mode">'+["Due","New","Missed","All"].map(x=>option(x,x,mode)).join("")+'</select></label>'+
    '<label class="flash-field">Cards this session<select id="flash-limit">'+[10,20,40,80,160,0].map(x=>option(String(x),x===0?"Entire available deck":x+" cards",String(batch))).join("")+'</select></label>'+
    '<button class="btn btn-primary" data-action="flash-start">Start review →</button></div>'+
    '<div class="notice good">Say the answer aloud or think it through, then flip. Mark <b>Again</b>, <b>Hard</b>, <b>Good</b> or <b>Easy</b> based on recall — not on how familiar the answer looks after revealing it. Your ratings schedule future reviews.</div></section>'+
-   '<div class="flash-section-head"><div><h2>Individual condition decks</h2><p>Every core has clinical, science, investigation, safety and data flashcards.</p></div><span class="chip blue" id="flash-deck-count">66 conditions</span></div>'+
+   '<div class="flash-section-head"><div><h2>Core condition decks by paper</h2><p>Paper 1: BCMH · CVS · Respiratory. Paper 2: Renal · GIT · MSK · Haem/Onc.</p></div><span class="chip blue" id="flash-deck-count">66 conditions</span></div>'+
    '<div class="toolbar"><label class="search-field"><span>⌕</span><input id="flash-search" type="search" placeholder="Search core conditions…" value="'+esc(search)+'" aria-label="Search flashcard decks"></label></div>'+
-   '<div class="flash-condition-grid" id="flash-decks"></div>';
+   '<div id="flash-decks"></div>';
   refreshDecks();
  }
  function refreshDecks(){
   const target=document.getElementById("flash-decks");if(!target)return;
-  let list=notes.filter(n=>(scope==="All"||(scope.startsWith("module:")?n.category===scope.slice(7):scope.startsWith("condition:")?n.name===scope.slice(10):true))&&norm(n.name+" "+n.category).includes(norm(search))).sort((a,b)=>a.name.localeCompare(b.name));
-  target.innerHTML=list.map(n=>{
-   const s=statsFor(n.name),pct=Math.round(s.mastered/Math.max(s.total,1)*100);
-   return '<button class="flash-deck-tile" data-action="flash-start" data-scope="condition:'+esc(n.name)+'" data-mode="All" data-limit="0">'+
-    '<span class="top">'+badge(n.category,"blue")+'<span>'+s.due+' due</span></span>'+
-    '<h3>'+esc(n.name)+'</h3><div class="flash-deck-progress"><span style="width:'+pct+'%"></span></div>'+
-    '<footer><span>'+s.mastered+' / '+s.total+' mastered</span><strong>Flip cards ↗</strong></footer></button>';
-  }).join("")||'<div class="empty"><h3>No matching conditions</h3><p>Try changing the search or the chosen deck.</p></div>';
-  const count=document.getElementById("flash-deck-count");if(count)count.textContent=list.length+" conditions";
+  const accepted=new Set(deckFor(scope).filter(c=>norm(c.name+" "+tags(c.name).map(t=>t.subject).join(" ")).includes(norm(search))).map(c=>c.name));
+  const chosenPapers=papers.filter(p=>!scope.startsWith("paper:")&&!scope.startsWith("paper-subject:")||p.paper===(scope.startsWith("paper:")?scope.slice(6):scope.slice(14).split("|")[0]));
+  let shown=new Set(),listed=0;
+  target.innerHTML=chosenPapers.map(p=>{
+   const sections=p.subjects.filter(s=>!scope.startsWith("paper-subject:")||p.paper+"|"+s.name===scope.slice(14)).map(s=>{
+    const names=s.conditions.filter(name=>accepted.has(name));
+    if(!names.length)return "";
+    names.forEach(n=>shown.add(n));listed+=names.length;
+    const cards=names.map(name=>{
+     const st=statsFor(name),pct=Math.round(st.mastered/Math.max(st.total,1)*100);
+     return '<button class="flash-deck-tile" data-action="flash-start" data-scope="condition:'+esc(name)+'" data-mode="All" data-limit="0">'+
+      '<span class="top">'+badge(s.name,"blue")+'<span>'+st.due+' due</span></span><h3>'+esc(name)+'</h3><div class="flash-deck-progress"><span style="width:'+pct+'%"></span></div>'+
+      '<footer><span>'+st.mastered+' / '+st.total+' mastered</span><strong>Flip cards ↗</strong></footer></button>';
+    }).join("");
+    return '<section class="study-subject-section"><div class="study-subject-heading"><h3>'+esc(s.name)+'</h3><span>'+names.length+' conditions</span></div><div class="flash-condition-grid">'+cards+'</div></section>';
+   }).join("");
+   return sections?'<section class="study-paper-block"><div class="study-paper-heading"><span>'+esc(p.paper)+'</span><p>'+p.subjects.map(s=>esc(s.name)).join(" · ")+'</p></div>'+sections+'</section>':"";
+  }).join("")||'<div class="empty"><h3>No matching core decks</h3><p>Try another study paper, subject or search term.</p></div>';
+  const count=document.getElementById("flash-deck-count");if(count)count.textContent=shown.size+" unique cores · "+listed+" listings";
  }
  function ratingsMarkup(){
   return '<div class="flash-rating-buttons">'+
@@ -117,13 +146,14 @@ window.createMuaazFlashcards=function(env){
   const progress=Math.round(s.position/Math.max(1,s.queue.length)*100);
   const title=s.scope.startsWith("condition:")?s.scope.slice(10):"Clinical flashcards";
   view().innerHTML='<div class="flash-play-shell"><div class="flash-play-header"><div><div class="overline">GEMP1 ACTIVE RECALL · '+esc(s.mode.toUpperCase())+'</div>'+
-    '<h1>'+esc(title)+'</h1><p>'+esc(c.module)+' · '+esc(c.skill)+' · '+esc(c.name)+'</p></div><a class="btn btn-sm" href="#flashcards">Save & exit ↗</a></div>'+
+    '<h1>'+esc(title)+'</h1><p>'+esc(tags(c.name).map(t=>t.paper+' / '+t.subject).join(' · '))+' · '+esc(c.skill)+' · '+esc(c.name)+'</p></div><a class="btn btn-sm" href="#flashcards">Save & exit ↗</a></div>'+
     '<div class="flash-play-meter"><span>Card <b>'+(s.position+1)+'</b> / '+s.queue.length+'</span><span>Again '+s.ratings.Again+' · Hard '+s.ratings.Hard+' · Good '+s.ratings.Good+' · Easy '+s.ratings.Easy+'</span></div>'+
     '<div class="flash-track"><span style="width:'+progress+'%"></span></div>'+
-    '<div class="flash-card-wrap"><div class="flash-card-rotate '+(s.revealed?"flipped":"")+'">'+
-    '<div class="flash-card-face flash-card-front" aria-hidden="'+(s.revealed?"true":"false")+'"><div class="flash-face-overline">QUESTION · '+esc(c.skill)+'</div><p class="flash-prompt">'+esc(c.front)+'</p><div class="flash-card-hint">Retrieve the answer before revealing</div></div>'+
-    '<div class="flash-card-face flash-card-back" aria-hidden="'+(s.revealed?"false":"true")+'"><div class="flash-face-overline" style="color:#168a72">EXPECTED ANSWER</div><p class="flash-answer">'+esc(c.back)+'</p><div class="flash-card-hint">Now rate your actual recall</div></div></div>'+
-    '<button class="flash-flip-button" data-action="flash-flip" aria-label="'+(s.revealed?"Hide answer":"Reveal answer")+'"></button></div>'+
+    '<div class="flash-card-wrap"><button type="button" class="flash-card-surface '+(s.revealed?"answer":"question")+'" data-action="flash-flip" aria-label="'+(s.revealed?"Answer shown. Tap to see question":"Question shown. Tap to reveal answer")+'">'+
+    (s.revealed
+      ?'<span class="flash-face-overline">EXPECTED ANSWER</span><span class="flash-answer">'+esc(c.back)+'</span><span class="flash-card-hint">Answer revealed · Tap to view question</span>'
+      :'<span class="flash-face-overline">QUESTION · '+esc(c.skill)+'</span><span class="flash-prompt">'+esc(c.front)+'</span><span class="flash-card-hint">Recall first · Tap to reveal answer</span>')+
+    '</button></div>'+
     '<div class="flash-rating-area">'+(s.revealed?'<p class="flash-rating-title">How well did you recall it before flipping?</p>'+ratingsMarkup():'<div class="flash-reveal"><button class="btn btn-primary" data-action="flash-flip">Reveal answer · Space ↗</button></div>')+'</div>'+
     '<div class="flash-play-footer"><span class="tiny-note">Space = flip · 1–4 = rate · Esc = exit</span><span class="tiny-note">Scores are based on your own recall ratings, not marks.</span></div></div>';
  }
