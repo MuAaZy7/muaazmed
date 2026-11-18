@@ -6,7 +6,7 @@ An independent Wits GEMP1 end-of-year revision platform on GitHub Pages.
 
 - 66 conditions verified from the **red-coloured text** in the user-supplied Wits core list (pp. 5–7).
 - Every note includes presenting features, mechanism, findings, investigations, safety, differentials, exam memory hook and VSAQ.
-- **151 clinical clusters / 1,333 questions**, including 10 newly authored multisystem cases (80 questions) with option-level rationales. Every red-listed condition retains at least two linked clusters.
+- **219 clinical clusters / 1,877 questions** in total. This includes 68 new challenge clusters (544 questions), 10 integrated multisystem cases and the existing student-contributed/original material. Every one of the 66 red-listed core conditions has **at least three linked clinical clusters**.
 - **Practice-first interface:** timed mock pages are removed from navigation and old mock URLs redirect to Practice Questions. Historical local mock data is left intact for compatibility.
 - Four-option SBAs reveal correct/incorrect and expected answer immediately; authored distractor rationales explain each option. VSAQs show the expected 1–3-word answer on submission, followed by self-marking.
 - Saved learning status, personal performance, bookmarks and local JSON export.
@@ -109,4 +109,14 @@ The Flashcards section no longer depends on browser 3D back-face rendering: reve
 - The **Integrated clinical cases** section contains 10 original multisystem clinical presentations (80 questions: 60 four-option SBAs including data interpretation, plus 20 VSAQs) inspired by the format of the supplied *3. Example IEYA questions.pdf*, not copied from an official paper.
 - SBAs reveal the expected answer and a rationale immediately after selection; the newly authored integrated cases additionally explain individual distractors. VSAQs show the short answer on submission and are self-marked for equivalent wording.
 - Practice history, answer accuracy, persistent mistake review and per-case restart are available. Retrying does not erase the previous attempt history.
-- The original and student-contributed cases remain available, but vary in review quality. Do not equate question count with readiness; verify important clinical facts against course materials.
+- The original and student-contributed cases remain available, but vary in review quality. **Challenge** items intentionally use competing diagnoses and mechanisms; their answer keys are original educational material, not Wits-validated. No question bank can guarantee 90% or an A. Verify important clinical facts against your teaching materials.
+
+## Harder SBA expansion by core condition (November 2026)
+
+- 66 newly authored **Advanced reasoning** clusters, one for each red-listed GEMP1 core condition, plus two distinct additional clusters to give Aplastic Anaemia and Peptic Ulcer Disease a minimum of three cases each.
+- 68 new case clusters × 8 linked questions = **544 additional questions:** 408 four-option SBAs (including one data-interpretation question per cluster) and 136 VSAQs.
+- The Advanced questions target close clinical alternatives, disease mechanisms, evidence-based discrimination, investigation priorities, safety and interpretation of numerical/laboratory findings. Expected VSAQs are brief 1–3-word answers in most cases.
+- **Challenge** appears as a filter in Practice Questions, and challenge cases are listed first inside each Paper → Subject → Core Condition section and the relevant note's linked cases.
+- Students continue to see the expected answer, an explanation and option feedback immediately after answering, then can self-review, retry and track mistakes.
+- Answer options are balanced across A/B/C/D; tests checked unique IDs, complete answer sets, missing-condition coverage, VSAQ lengths and basic website interactions.
+- These are independent *Wits-style* questions, **not Wits past-paper questions or faculty-validated difficulty**. Clinical precision needs continued editorial review; do not rely on any single generated question without checking source lectures where uncertain.
