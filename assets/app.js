@@ -1,7 +1,7 @@
 (function(){
 "use strict";
 const EYE_NOTES=Array.isArray(window.MED_NOTES)?window.MED_NOTES:[];
-const RAW_CASES=[...(window.MED_BANK||[]),...(window.MED_EXTRA||[])];
+const RAW_CASES=[...(window.MED_BANK||[]),...(window.MED_EXTRA||[]),...(window.MED_INTEGRATED_CASES||[])];
 const SLIDES=window.MED_SLIDES||[];
 const CONFIG=window.MED_BACKEND||{};
 const CORE_MAP={
@@ -37,7 +37,7 @@ function caseLabel(c){const t=caseTags(c);return t.length?t.slice(0,3).map(x=>x.
 const CASES=RAW_CASES.map(c=>Object.assign({},c,{coreNames:Array.isArray(c.core)?c.core:(c.core?[c.core]:(CORE_MAP[c.id]||[]))}));
 const CORE_CASES=CASES.filter(c=>c.coreNames.length>0);
 const KEY="muaazmed-gemp1-2026-v5";
-const defaultState=()=>({learned:[],saved:[],quickChecks:{},flashcards:{},flashSession:null,caseAnswers:{},flags:{},mockSessions:{},mockHistory:[],guestName:"Guest student",lastVisited:null});
+const defaultState=()=>({learned:[],saved:[],quickChecks:{},flashcards:{},flashSession:null,caseAnswers:{},practiceHistory:[],flags:{},mockSessions:{},mockHistory:[],guestName:"Guest student",lastVisited:null});
 let state=defaultState();
 try{const p=JSON.parse(localStorage.getItem(KEY)||"null");if(p&&typeof p==="object")state=Object.assign(defaultState(),p)}catch(e){}
 if(!Array.isArray(state.learned))state.learned=[];
@@ -46,7 +46,8 @@ if(!state.flashcards||typeof state.flashcards!=="object")state.flashcards={};
 if(!Array.isArray(state.mockHistory))state.mockHistory=[];
 if(!state.mockSessions||typeof state.mockSessions!=="object")state.mockSessions={};
 if(!state.caseAnswers||typeof state.caseAnswers!=="object")state.caseAnswers={};
-let filterNotes="All",notePaper="All",noteSubject="All",filterCases="Core",casePaper="All",caseSubject="All",filterLectures="All",searchText="",currentTimer=null,toastTimer=null;
+if(!Array.isArray(state.practiceHistory))state.practiceHistory=[];
+let filterNotes="All",notePaper="All",noteSubject="All",filterCases="All",casePaper="All",caseSubject="All",filterLectures="All",searchText="",currentTimer=null,toastTimer=null;
 let supabase=null,authUser=null,syncTimer=null,authReady=false,communityEntries=[];
 let activeQuestion=null;
 const $=id=>document.getElementById(id);
@@ -73,28 +74,28 @@ function head(over,title,sub,actions=""){return '<div class="page-head"><div><di
 function feedbackBox(text,style=""){return '<div class="feedback '+style+'">'+text+'</div>'}
 function formatNumber(n){return new Intl.NumberFormat("en-ZA").format(n)}
 function clip(s,n=150){return esc(short(s,n))}
-function setCrumb(page){const labels={home:"Dashboard",notes:"Core notes",note:"Core condition",cases:"Case bank",case:"Clinical case",mocks:"Mock exams",mock:"Mock paper",result:"Results",flashcards:"Flashcards",study:"Card review",leaderboard:"Scoreboard",lectures:"Lecture library"};$("crumb").textContent=labels[page]||"Dashboard";document.querySelectorAll("[data-nav]").forEach(a=>a.classList.toggle("active",a.dataset.nav===(["note"].includes(page)?"notes":["case"].includes(page)?"cases":["mock","result"].includes(page)?"mocks":page==="study"?"flashcards":page)))}
+function setCrumb(page){const labels={home:"Dashboard",notes:"Core notes",note:"Core condition",cases:"Practice Questions",case:"Practice question",mocks:"Practice Questions",mock:"Mock paper",result:"Results",practice:"Practice Questions",flashcards:"Flashcards",study:"Card review",leaderboard:"Progress",lectures:"Lecture library"};$("crumb").textContent=labels[page]||"Dashboard";document.querySelectorAll("[data-nav]").forEach(a=>a.classList.toggle("active",a.dataset.nav===(["note"].includes(page)?"notes":["case"].includes(page)?"practice":["mock","result"].includes(page)?"practice":page==="study"?"flashcards":page)))}
 function setIdentity(){let label=authUser?(authUser.user_metadata?.nickname||authUser.email?.split("@")[0]||"Student"):state.guestName;label=short(label,21);$("side-name").textContent=label;$("top-identity").textContent=authUser?"My account":"Guest mode";$("top-avatar").textContent=label.slice(0,1).toUpperCase();$("side-status").textContent=authUser?"Synced account (when online)":"Progress saved on this device";document.querySelector(".avatar").textContent=label.slice(0,1).toUpperCase()}
 function learnToggle(name){const idx=state.learned.indexOf(name);if(idx>=0)state.learned.splice(idx,1);else state.learned.push(name);save();render()}
 function saveToggle(name){const idx=state.saved.indexOf(name);if(idx>=0)state.saved.splice(idx,1);else state.saved.push(name);save();render()}
-function questionStats(){const p=Object.values(state.caseAnswers);const c=p.filter(x=>x.correct).length;return {count:p.length,correct:c,percent:p.length?Math.round(c/p.length*100):0}}
+function questionStats(){const p=Object.values(state.caseAnswers).filter(x=>typeof x.correct==="boolean");const c=p.filter(x=>x.correct).length;return {count:p.length,correct:c,percent:p.length?Math.round(c/p.length*100):0}}
 function renderHome(){
  const quiz=questionStats(),pct=progressPct(),best=bestScore();
  const subjectTiles=PAPER_GROUPS.map(p=>'<div class="home-paper-block"><div class="home-paper-heading"><span>'+esc(p.paper)+'</span><small>'+p.subjects.map(s=>esc(s.name)).join(' • ')+'</small></div><div class="subject-grid">'+p.subjects.map(s=>{
    const n=s.conditions.length, done=s.conditions.filter(name=>state.learned.includes(name)).length;
    return '<button class="subject-tile" data-action="module" data-paper="'+esc(p.paper)+'" data-subject="'+esc(s.name)+'"><span class="subject-icon">'+iconFor(s.name)+'</span><span><b>'+esc(s.name)+'</b><small>'+done+' / '+n+' conditions revised</small></span><span class="subject-arrow">↗</span></button>';
  }).join("")+'</div></div>').join("");
-  $("view").innerHTML='<section class="hero"><div class="hero-copy"><div class="hero-kicker">THE GEMP1 END-OF-YEAR INTEGRATED ASSESSMENT</div><h1>Build the clinical thinking that gets you <em>exam-ready.</em></h1><p>Every red-listed GEMP1 condition. Condensed high-yield notes, 1,254 clinical flashcards, case clusters and two complete timed practice papers — organised around what Wits says it tests.</p><div class="hero-actions"><a class="btn btn-primary" href="#notes">Start learning ↗</a><a class="btn btn-soft" href="flashcards.html#flashcards">Review flashcards →</a><a class="btn btn-soft" href="#mocks">Mock exams ↗</a></div></div><div class="hero-art"><div class="orbit"><div class="hero-ring"><span>'+pct+'%<small>REVISED</small></span></div></div><span class="spark a">✦</span><span class="spark b">✧</span></div></section>'+
+  $("view").innerHTML='<section class="hero"><div class="hero-copy"><div class="hero-kicker">THE GEMP1 END-OF-YEAR INTEGRATED ASSESSMENT</div><h1>Build the clinical thinking that gets you <em>exam-ready.</em></h1><p>Every red-listed GEMP1 condition. Condensed high-yield notes, 1,254 clinical flashcards, case clusters and instant-feedback clinical questions — organised around what Wits says it tests.</p><div class="hero-actions"><a class="btn btn-primary" href="#practice">Practice questions ↗</a><a class="btn btn-soft" href="flashcards.html#flashcards">Review flashcards →</a><a class="btn btn-soft" href="#notes">Core conditions ↗</a></div></div><div class="hero-art"><div class="orbit"><div class="hero-ring"><span>'+pct+'%<small>REVISED</small></span></div></div><span class="spark a">✦</span><span class="spark b">✧</span></div></section>'+
  '<section class="stat-grid">'+
  metric("◈",EYE_NOTES.length,"GEMP1 core conditions","Official red-listed scope")+
  metric("☷",CASES.length,"Clinical case clusters",totalQuestions+" practice questions")+
- metric("◇","120 × 2","Full mock papers","180 minutes each")+
- metric("✦",best==null?"—":best+"%","Your best mock score","Target: 90% or higher")+
+ metric("◇",Object.values(state.caseAnswers).filter(x=>!x.correct).length,"Questions to revisit","Learn from the explanation")+
+ metric("✦",quiz.count?quiz.percent+"%":"—","Practice accuracy","Review what you missed")+
  '</section><div class="dashboard-cols"><div><section class="panel"><div class="panel-head"><div><h2>Master the core, one system at a time</h2><p>Paper 1: BCMH, CVS, Respiratory. Paper 2: Renal, GIT, MSK, Haem/Onc.</p></div><a href="#notes" class="btn btn-sm">View all ↗</a></div>'+subjectTiles+'<div class="notice">Source transparency: the 66-condition scope follows the red text in your Wits document. Summaries are original educational syntheses; case questions include student-bank contributions and separately identified original practice.</div></section></div><div><section class="panel"><div class="panel-head"><div><h2>Your revision pulse</h2><p>Your progress is private to this device in guest mode.</p></div></div><div class="progress-meta"><span>Conditions revised</span><b>'+state.learned.length+' / '+EYE_NOTES.length+'</b></div><div class="progress-track"><span style="width:'+pct+'%"></span></div><div class="rule"></div>'+
  task("▤","Finish your next condition","Short mechanism + discriminators + red flags","#notes")+
  task("◈","Flip active-recall flashcards","1,254 cards · due and missed reviews","flashcards.html#flashcards")+
- task("◈","Reason through a case cluster","SBA, results interpretation and VSAQ","#cases")+
- task("▣","Sit a 3-hour timed mock","120 marks · exam-style review","#mocks")+
+ task("◈","Practise integrated clinical cases","Immediate corrections and answer reasoning","#practice")+
+ task("▣","Review your mistakes","Learn from the feedback after every answer","#practice")+
  '<div class="notice good"><strong>Practice so far:</strong> '+quiz.count+' questions answered · '+(quiz.count?quiz.percent+"% accuracy":"no answers yet")+'.</div></section></div></div>';
 }
 function metric(icon,value,label,note){return '<div class="metric-card"><span class="metric-icon">'+icon+'</span><div class="metric-number">'+esc(value)+'</div><div class="metric-label">'+esc(label)+'</div><div class="metric-note">'+esc(note)+'</div></div>'}
@@ -162,31 +163,93 @@ function renderDetail(name){
  $("view").innerHTML='<div class="detail-layout"><div class="detail-main"><button class="back-link" data-action="back-notes">← Back to core conditions</button><div class="detail-hero"><div class="detail-top">'+badge("GEMP1 red-listed","red")+labelsFor(n.name)+(learned?badge("Revised ✓","green"):"")+'</div><h1>'+esc(n.name)+'</h1><p>'+esc(n.presentation)+'</p><div class="page-actions"><button class="btn '+(learned?"btn-success":"btn-primary")+'" data-action="learn" data-name="'+esc(n.name)+'">'+(learned?"✓ Marked as revised":"+ Mark as revised")+'</button><button class="btn" data-action="save" data-name="'+esc(n.name)+'">'+(saved?"★ Saved":"☆ Save note")+'</button><button class="btn btn-soft" data-action="flash-start" data-scope="condition:'+esc(n.name)+'" data-mode="All" data-limit="0">◈ Deep flashcards</button></div></div>'+sections+'<div class="notice">Study rule: be able to recognise the presentation, explain the underlying mechanism, interpret basic investigations and state the safest supervised action. These summaries are revision aids, not a replacement for your original Wits teaching material.</div></div><aside class="detail-aside"><section class="aside-box"><div class="overline">ACTIVE RECALL · FLASHCARDS</div><h3>'+Flash.statsFor(n.name).total+' cards for this condition</h3><p>Clinical recognition, mechanisms, tests, clinical data, red flags, mimics and multiple VSAQs.</p><div class="progress-meta"><span>Mastered</span><b>'+Flash.statsFor(n.name).mastered+' / '+Flash.statsFor(n.name).total+'</b></div><div class="progress-track"><span style="width:'+(Flash.statsFor(n.name).mastered/Math.max(1,Flash.statsFor(n.name).total)*100)+'%"></span></div><button class="btn btn-primary btn-wide" style="margin-top:14px" data-action="flash-start" data-scope="condition:'+esc(n.name)+'" data-mode="All" data-limit="0">Study all flashcards →</button><p class="tiny-note" style="margin-top:10px">Flip the card and rate your recall to schedule future reviews. No fixed card cap.</p></section><section class="aside-box"><h3>Linked case practice</h3>'+links+'</section><section class="aside-box"><h3>Related Wits lectures</h3>'+lectures+'</section></aside></div>';
 }
 function section(icon,title,body,kind){return '<section class="detail-section '+kind+'"><h2><span>'+icon+'</span>'+esc(title)+'</h2><p>'+esc(body)+'</p></section>'}
-function renderCases(){
- let found=CASES.filter(c=>{
-  const tags=caseTags(c);
-  const scope=filterCases==="All"||(filterCases==="Core"?c.coreNames.length>0:filterCases==="Extension"?c.coreNames.length===0:true);
-  const paper=casePaper==="All"||tags.some(t=>t.paper===casePaper);
-  const subject=caseSubject==="All"||tags.some(t=>t.subject===caseSubject&&(casePaper==="All"||t.paper===casePaper));
-  const query=!searchText||norm(c.title+" "+c.module+" "+c.coreNames.join(" ")+" "+c.scenario).includes(norm(searchText));
-  return scope&&paper&&subject&&query;
+
+function practiceCaseStats(c){const saved=c.questions.map(q=>state.caseAnswers[qrKey(c,q)]);const attempted=saved.filter(Boolean);return{total:c.questions.length,attempted:attempted.length,correct:attempted.filter(x=>x.correct).length,wrong:attempted.filter(x=>x.correct===false).length}}
+function practiceCaseCard(c){
+ const st=practiceCaseStats(c),tags=caseTags(c);
+ return '<article class="practice-case-card"><div class="practice-case-meta">'+
+  badge(c.isIntegrated?"Integrated reasoning":"Core condition","blue")+
+  '<span>'+c.questions.length+' questions · '+c.questions.filter(q=>q.type==="VSAQ").length+' VSAQ</span></div>'+
+  '<h4>'+esc(c.title)+'</h4><p>'+clip(c.scenario,155)+'</p>'+
+  '<div class="practice-case-footer"><span>'+st.attempted+' / '+st.total+' attempted'+(st.wrong?' · <b class="practice-miss">'+st.wrong+' to review</b>':"")+'</span>'+
+  '<a class="btn btn-primary btn-sm" href="'+caseHash(c.id)+'">'+(st.attempted?"Continue / review →":"Start practice →")+'</a></div></article>';
+}
+function needsPracticeReview(c){
+ return c.questions.some(q=>{
+  const key=qrKey(c,q),current=state.caseAnswers[key];
+  if(current&&typeof current.correct==="boolean")return !current.correct;
+  const recent=(state.practiceHistory||[]).filter(h=>String(h.caseId)===String(c.id)&&String(h.question)===String(q.number));
+  return recent.length?recent[recent.length-1].correct===false:false;
  });
- $("view").innerHTML=head("CLINICAL REASONING","Clinical case clusters by paper and subject","Every red-listed condition has at least two linked cases. The Paper 1 / Paper 2 split is your study organisation, not an official Wits exam-content guarantee.",'<a class="btn btn-primary" href="#mocks">Full mocks ↗</a>')+
- '<div class="study-filter-toolbar"><label class="search-field"><span>⌕</span><input id="cases-search" type="search" aria-label="Search case bank" placeholder="Search clinical cases…" value="'+esc(searchText)+'"></label>'+
+}
+function practiceFilter(c){
+ const tags=caseTags(c);
+ const scope=filterCases==="All"||(filterCases==="Core"?!c.isIntegrated&&c.coreNames.length>0:filterCases==="Integrated"?!!c.isIntegrated:filterCases==="Mistakes"?needsPracticeReview(c):filterCases==="Extension"?c.coreNames.length===0:false);
+ const paper=casePaper==="All"||tags.some(t=>t.paper===casePaper);
+ const subject=caseSubject==="All"||tags.some(t=>t.subject===caseSubject&&(casePaper==="All"||t.paper===casePaper));
+ const query=!searchText||norm(c.title+" "+c.module+" "+c.coreNames.join(" ")+" "+c.scenario).includes(norm(searchText));
+ return scope&&paper&&subject&&query;
+}
+function renderCases(){
+ const found=CASES.filter(practiceFilter),integrated=found.filter(c=>c.isIntegrated),ordinary=found.filter(c=>!c.isIntegrated);
+ const unique=new Set(ordinary.map(c=>String(c.id)));
+ let groups="";
+ for(const paper of PAPER_GROUPS){
+  if(casePaper!=="All"&&casePaper!==paper.paper)continue;
+  const subjectBlocks=[];
+  for(const subject of paper.subjects){
+   if(caseSubject!=="All"&&caseSubject!==subject.name)continue;
+   const conditionBlocks=[];
+   for(const name of subject.conditions){
+    const linked=ordinary.filter(c=>c.coreNames.some(x=>norm(x)===norm(name)));
+    if(!linked.length)continue;
+    conditionBlocks.push('<details class="practice-condition"'+(caseSubject!=="All"?' open':'')+'><summary><span>'+esc(name)+'</span><span>'+linked.length+' cases <span class="practice-caret">⌄</span></span></summary><div class="practice-case-list">'+linked.map(practiceCaseCard).join("")+'</div></details>');
+   }
+   if(conditionBlocks.length)subjectBlocks.push('<section class="practice-subject-section"><h3>'+esc(subject.name)+' <small>'+conditionBlocks.length+' core conditions</small></h3>'+conditionBlocks.join("")+'</section>');
+  }
+  if(subjectBlocks.length)groups+='<section class="practice-paper-section"><header><h2>'+esc(paper.paper)+'</h2><span>'+paper.subjects.map(s=>esc(s.name)).join(" · ")+'</span></header>'+subjectBlocks.join("")+'</section>';
+ }
+ $("view").innerHTML=head("PRACTICE QUESTIONS","Learn from every answer","Choose a subject or a core condition. Answer an SBA to reveal the correct option and its explanation straight away. VSAQs show the expected short answer for self-review.","")+
+ '<div class="practice-intro">Built around the GEMP1 integrated-assessment examples: one clinical presentation followed by mechanisms, discriminating findings, investigations, data and safe actions. These are original/student-derived questions, not an official Wits examination. Study-paper headings are for revision, not guaranteed exam allocation.</div>'+
+ '<div class="practice-summary-grid"><div><strong>'+CASES.length+'</strong><span>Total clinical clusters</span></div><div><strong>'+totalQuestions+'</strong><span>Practice questions</span></div><div><strong>'+questionStats().percent+'%</strong><span>Your answer accuracy</span></div><div><strong>'+Object.values(state.caseAnswers).filter(x=>!x.correct).length+'</strong><span>Answers to review</span></div></div>'+
+ '<div class="study-filter-toolbar"><label class="search-field"><span>⌕</span><input id="cases-search" type="search" aria-label="Search question practice" placeholder="Search disease, clinical presentation or mechanism…" value="'+esc(searchText)+'"></label>'+
  '<label>Study paper<select id="cases-paper" class="select">'+selectOptions(casePaper,caseSubject)+'</select></label>'+
  '<label>Subject<select id="cases-subject" class="select">'+selectOptions(casePaper,caseSubject,true)+'</select></label></div>'+
- filterBar("cases",["Core","All","Extension"],filterCases)+
- '<p class="tiny-note">'+found.length+' clusters · '+found.reduce((a,c)=>a+c.questions.length,0)+' practice questions. Original/student-derived cases are not official Wits questions.</p>'+
- '<div class="case-list">'+found.map(c=>'<article class="case-card"><div class="card-top">'+badge(caseTags(c)[0]?.subject||"Integrated","blue")+badge(c.coreNames.length?"Core linked":"Integrated context",c.coreNames.length?"green":"amber")+'</div><small>'+esc(caseLabel(c))+' · '+c.questions.length+' questions</small><h3>'+esc(c.title)+'</h3><p>'+clip(c.scenario,165)+'</p><div class="card-footer"><span>'+c.questions.filter(q=>q.type==="VSAQ").length+' VSAQ · '+c.questions.filter(q=>q.type==="SBA").length+' SBA</span><a class="card-cta" href="'+caseHash(c.id)+'">Start case ↗</a></div></article>').join("")+'</div>';
+ filterBar("cases",["All","Integrated","Core","Mistakes"],filterCases)+
+ '<p class="tiny-note">'+found.length+' distinct clinical clusters shown · '+found.reduce((n,c)=>n+c.questions.length,0)+' questions · Expand a condition to practise its cases.</p>'+
+ (integrated.length?'<section class="practice-featured"><div class="practice-featured-head"><div><div class="overline">MULTISYSTEM REASONING</div><h2>Integrated clinical cases</h2><p>Like the Wits examples: a single presentation with linked questions across clinical and basic science tracks.</p></div><span>'+integrated.length+' cases</span></div><div class="practice-case-list">'+integrated.map(practiceCaseCard).join("")+'</div></section>':"")+
+ (groups||(!integrated.length?'<div class="empty"><h3>No matching practice cases</h3><p>Change the filters or search terms.</p></div>':""));
+}
+function practiceFeedback(c,q,saved){
+ if(!saved)return '<p class="practice-help">Choose one answer to see the explanation immediately. Questions are for learning, not a timed test.</p>';
+ const correctText=q.type==="SBA"?q.answer+'. '+q.options["ABCD".indexOf(q.answer)]:q.answer;
+ const pending=q.type==="VSAQ"&&saved.selfReviewed===false;
+ const mark=pending?'<span class="practice-status">Compare and self-mark</span>':saved.correct?'<span class="practice-status correct">✓ Correct</span>':'<span class="practice-status incorrect">✕ Not quite — review</span>';
+ const choice=q.type==="SBA"?'<p><b>Your choice:</b> '+esc(saved.answer)+'. '+esc(q.options["ABCD".indexOf(saved.answer)]||"")+'</p>':'<p><b>Your answer:</b> '+esc(saved.answer)+'</p>';
+ const selectedIndex="ABCD".indexOf(saved.answer),wrongReason=q.type==="SBA"&&!saved.correct&&Array.isArray(q.whyOptions)&&q.whyOptions[selectedIndex]?'<p><b>Why your choice was less suitable:</b> '+esc(q.whyOptions[selectedIndex])+'</p>':"";
+ const allOptions=q.type==="SBA"&&Array.isArray(q.whyOptions)&&q.whyOptions.length===4?'<details class="practice-why"><summary>Why each option is right or wrong</summary><div>'+q.whyOptions.map((r,i)=>'<p><b>'+String.fromCharCode(65+i)+'.</b> '+esc(r)+'</p>').join("")+'</div></details>':"";
+ const self=q.type==="VSAQ"?'<div class="practice-self-check"><span>'+(saved.selfReviewed?'Self-marked '+(saved.correct?'correct':'for revision')+'. Change if necessary:':'Did your answer match the expected meaning?')+'</span><button class="btn btn-sm" data-action="mark-practice-vsaq" data-correct="1" data-case="'+c.id+'" data-number="'+q.number+'">✓ I got it</button><button class="btn btn-sm" data-action="mark-practice-vsaq" data-correct="0" data-case="'+c.id+'" data-number="'+q.number+'">Needs revision</button></div>':"";
+ return '<section class="practice-answer-feedback '+(pending?"pending":saved.correct?"correct":"incorrect")+'" id="answer-feedback" tabindex="-1">'+mark+choice+'<div class="practice-correct-answer"><small>EXPECTED ANSWER</small><strong>'+esc(correctText)+'</strong></div><p><b>Reasoning:</b> '+esc(q.explain||q.point||"Review this concept in the relevant core note.")+'</p>'+wrongReason+allOptions+self+'</section>';
 }
 function renderCase(id,idx){
- const c=CASES.find(x=>String(x.id)===String(id));if(!c){goto("#cases");return}
+ const c=CASES.find(x=>String(x.id)===String(id));if(!c){goto("#practice");return}
  idx=Math.max(0,Math.min(c.questions.length-1,Number(idx)||0));const q=c.questions[idx],key=qrKey(c,q),saved=state.caseAnswers[key],flag=state.flags[key];
- const opts=q.type==="SBA"?'<div class="options">'+q.options.map((o,i)=>{const ch="ABCD"[i],cls=saved?(ch===q.answer?"correct":ch===saved.answer?"incorrect":""):"";return '<button class="option '+cls+'" data-action="answer-case" data-case="'+c.id+'" data-index="'+idx+'" data-letter="'+ch+'" '+(saved?"disabled":"")+'><span class="opt-letter">'+ch+'</span>'+esc(o)+'</button>'}).join("")+'</div>':
- '<div><p class="tiny-note">Answer in 1–3 words. You can check the expected answer after submitting.</p><input class="input" style="width:100%" id="case-free" placeholder="Very short answer…" value="'+esc(saved?.answer||"")+'" '+(saved?"disabled":"")+'><div style="margin-top:10px"><button class="btn btn-primary btn-sm" data-action="answer-vsaq" data-case="'+c.id+'" data-index="'+idx+'" '+(saved?"disabled":"")+'>Check answer</button></div></div>';
- const expl=saved?'<div class="q-explanation"><h4>'+((q.type==="VSAQ"||saved.correct)?"✓ Answer & reasoning":"Review the reasoning")+'</h4><p><strong>Expected: '+esc(q.type==="SBA"?q.options["ABCD".indexOf(q.answer)]:q.answer)+'.</strong> '+esc(q.explain||q.point||"")+'</p></div>':"";
+ const opts=q.type==="SBA"?'<div class="options practice-options">'+q.options.map((o,i)=>{
+  const letter="ABCD"[i],cls=saved?(letter===q.answer?"correct":letter===saved.answer?"incorrect":""):"";
+  return '<button class="option '+cls+'" data-action="answer-case" data-case="'+c.id+'" data-index="'+idx+'" data-letter="'+letter+'" '+(saved?"disabled":"")+'><span class="opt-letter">'+letter+'</span>'+esc(o)+(saved&&letter===q.answer?' <span class="practice-option-status">✓ Correct</span>':saved&&letter===saved.answer?' <span class="practice-option-status">✕ Your answer</span>':"")+'</button>';
+ }).join("")+'</div>':
+ '<div><p class="tiny-note">Answer in 1–3 words. Then compare with the expected short answer.</p><input class="input" style="width:100%" id="case-free" placeholder="Your very short answer…" value="'+esc(saved?.answer||"")+'" '+(saved?"disabled":"")+'><div style="margin-top:10px"><button class="btn btn-primary btn-sm" data-action="answer-vsaq" data-case="'+c.id+'" data-index="'+idx+'" '+(saved?"disabled":"")+'>Show expected answer</button></div></div>';
  const palette=c.questions.map((x,i)=>{const f=state.caseAnswers[qrKey(c,x)],fl=state.flags[qrKey(c,x)];return '<button class="'+(i===idx?"active ":"")+(f?(f.correct?"answered":"wrong"):"")+(fl?" flagged":"")+'" data-action="case-jump" data-case="'+c.id+'" data-index="'+i+'">'+(i+1)+'</button>'}).join("");
- $("view").innerHTML='<div class="case-layout"><div><button class="back-link" data-action="back-cases">← Back to clinical case bank</button><div class="scenario"><div class="overline">CLINICAL CASE · '+esc(caseLabel(c))+'</div><h2>'+esc(c.title)+'</h2><p>'+esc(c.scenario)+'</p></div><div class="question-panel"><div class="q-progress"><span>QUESTION '+(idx+1)+' OF '+c.questions.length+'</span>'+badge(q.type==="VSAQ"?"VSAQ · 1–3 words":q.isData?"Results interpretation":"SBA · 4 options","blue")+'</div><h2>'+esc(q.q)+'</h2>'+opts+expl+'<div class="question-foot"><button class="btn btn-sm" data-action="flag" data-key="'+esc(key)+'">'+(flag?"⚑ Flagged":"⚐ Flag for review")+'</button><div class="page-actions"><button class="btn btn-sm" data-action="case-jump" data-case="'+c.id+'" data-index="'+(idx-1)+'" '+(idx===0?"disabled":"")+'>← Previous</button><button class="btn btn-primary btn-sm" data-action="case-jump" data-case="'+c.id+'" data-index="'+(idx+1)+'" '+(idx===c.questions.length-1?"disabled":"")+'>Next →</button></div></div>'+(saved?'<button class="btn btn-soft btn-sm" style="margin-top:15px" data-action="ask-ai" data-case="'+c.id+'" data-index="'+idx+'">✦ Ask the AI tutor about this question</button>':'<p class="tiny-note" style="margin-top:15px">Answer first to unlock the rationale and AI tutor.</p>')+'</div></div><aside class="q-side"><div class="aside-box"><h3>Question navigator</h3><p class="tiny-note">Choose a question; green means answered correctly.</p><div class="q-palette">'+palette+'</div><div class="progress-track"><span style="width:'+Math.round(100*c.questions.filter(x=>state.caseAnswers[qrKey(c,x)]).length/c.questions.length)+'%"></span></div><p class="tiny-note">'+c.questions.filter(x=>state.caseAnswers[qrKey(c,x)]).length+' of '+c.questions.length+' completed</p><div class="rule"></div><p class="tiny-note"><strong>Source:</strong> '+esc(c.source||"Student teaching bank")+'</p><p class="tiny-note">These questions are practice material and have not been verified as official Wits items.</p></div></aside></div>';
+ const stats=practiceCaseStats(c);
+ $("view").innerHTML='<div class="case-layout"><div><button class="back-link" data-action="back-cases">← Back to Practice Questions</button>'+
+ '<div class="scenario"><div class="overline">INTEGRATED PRACTICE · '+esc(caseLabel(c))+'</div><h2>'+esc(c.title)+'</h2><p>'+esc(c.scenario)+'</p></div>'+
+ '<div class="question-panel"><div class="q-progress"><span>QUESTION '+(idx+1)+' OF '+c.questions.length+'</span>'+badge(q.type==="VSAQ"?"VSAQ · 1–3 words":q.isData?"Results interpretation":"SBA · 4 options","blue")+'</div><h2>'+esc(q.q)+'</h2>'+
+ opts+practiceFeedback(c,q,saved)+
+ '<div class="question-foot"><button class="btn btn-sm" data-action="flag" data-key="'+esc(key)+'">'+(flag?"⚑ Flagged":"⚐ Flag to revise")+'</button><div class="page-actions"><button class="btn btn-sm" data-action="case-jump" data-case="'+c.id+'" data-index="'+(idx-1)+'" '+(idx===0?"disabled":"")+'>← Previous</button><button class="btn btn-primary btn-sm" data-action="case-jump" data-case="'+c.id+'" data-index="'+(idx+1)+'" '+(idx===c.questions.length-1?"disabled":"")+'>Next question →</button></div></div>'+
+ (saved?'<div class="practice-followup"><a href="'+noteHash(c.coreNames[0]||"")+'">Review related core notes ↗</a><button class="btn btn-sm" data-action="practice-retry" data-case="'+c.id+'" data-index="'+idx+'">Try again</button><button class="btn btn-soft btn-sm" data-action="ask-ai" data-case="'+c.id+'" data-index="'+idx+'">✦ Ask AI tutor</button></div>':'')+
+ '</div></div><aside class="q-side"><div class="aside-box"><h3>Learning progress</h3><p class="tiny-note">Green = correct; red = needs review. Tap any question to revisit it.</p><div class="q-palette">'+palette+'</div>'+
+ '<div class="progress-track"><span style="width:'+Math.round(100*stats.attempted/stats.total)+'%"></span></div><p class="tiny-note">'+stats.attempted+'/'+stats.total+' attempted · '+stats.correct+' correct · '+stats.wrong+' to review</p>'+
+ '<div class="rule"></div><p class="tiny-note"><strong>Source:</strong> '+esc(c.source||"Student teaching bank")+'</p><button class="btn btn-sm" data-action="practice-reset-case" data-case="'+c.id+'">Restart this case</button><p class="tiny-note">Restart clears the current case answers, not your previous attempt history.</p></div></aside></div>';
 }
 function mockCaseOrder(){
  const byModule={};for(const c of CORE_CASES){const m=c.module;if(!byModule[m])byModule[m]=[];byModule[m].push(c)}
@@ -262,11 +325,24 @@ function renderResult(which){
  '<section class="panel" style="margin-top:18px"><div class="panel-head"><div><h2>Review SBA errors</h2><p>These incorrect or unanswered items are your immediate revision priorities.</p></div></div><div class="exam-review">'+(review||'<p class="tiny-note">All SBAs correct — excellent work.</p>')+'</div></section>';
 }
 function renderLeaderboard(){
- const hist=[...state.mockHistory].sort((a,b)=>b.date-a.date),best=bestScore(),personal=hist.slice(0,15).map((x,i)=>'<div class="board-row"><span class="rank-num">'+(i+1)+'</span><span class="board-name">Paper '+x.paper+' · '+new Date(x.date).toLocaleDateString("en-ZA")+'</span><span class="board-score">'+x.correct+'/120 · '+Math.round(x.correct/120*100)+'%</span></div>').join("");
- const community=authReady&&communityEntries.length?communityEntries.map((r,i)=>'<div class="board-row"><span class="rank-num">'+(i+1)+'</span><span class="board-name">'+esc(r.nickname)+'</span><span class="board-score">'+esc(r.best_score)+' / 120</span></div>').join(""):'<div class="empty"><div class="empty-symbol">☆</div><h3>Community board not active yet</h3><p>Personal mock results work today. Cross-device community rankings will appear when the Supabase backend is configured and users opt in.</p></div>';
- $("view").innerHTML=head("PROGRESS TRACKER","Your scoreboard","Track attempts honestly, aim for consistent improvement and compare only published opt-in profiles once community accounts are enabled.",'<button class="btn" data-action="export">Export my progress</button>')+
- '<div class="stat-grid">'+metric("✦",best==null?"—":best+"%","Personal best","Two 120-question mocks")+metric("▤",state.learned.length+"/"+EYE_NOTES.length,"Conditions revised","Red-listed GEMP1 scope")+metric("◈",answeredCount(),"Case answers","Interactive practice")+metric("⌁",caseAccuracy()==null?"—":caseAccuracy()+"%","Case accuracy","Across answered questions")+'</div>'+
- '<div class="dashboard-cols"><section class="panel"><div class="panel-head"><div><h2>My mock exam history</h2><p>Stored locally in guest mode.</p></div></div>'+(personal||'<div class="empty"><h3>No mock results yet</h3><p>Complete a timed paper and self-mark VSAQs to record your score.</p><a class="btn btn-primary" href="#mocks">Go to mocks ↗</a></div>')+'</section><section class="panel"><div class="panel-head"><div><h2>Community leaderboard</h2><p>Opt-in ranking; no fabricated profiles or scores.</p></div></div>'+community+(authReady?'<button class="btn btn-soft btn-sm" data-action="load-board">Refresh leaderboard</button>':'<p class="tiny-note">Requires configured authentication, database and explicit student opt-in.</p>')+'</section></div>';
+ const done=Object.entries(state.caseAnswers),stats=questionStats();
+ const wrongCases=CASES.filter(needsPracticeReview);
+ const list=wrongCases.slice(0,16).map(c=>'<div class="board-row"><span class="rank-num">↻</span><span class="board-name">'+esc(c.title)+'</span><a class="btn btn-sm" href="'+caseHash(c.id)+'">Review ↗</a></div>').join("");
+ const history=[...(state.practiceHistory||[])].sort((a,b)=>b.time-a.time).slice(0,12).map(h=>{
+  const c=CASES.find(x=>String(x.id)===String(h.caseId));
+  if(!c)return "";
+  const q=c.questions.find(x=>String(x.number)===String(h.question));
+  return '<div class="board-row"><span class="rank-num">'+(h.correct?"✓":"✕")+'</span><span class="board-name">'+esc(c.title)+' · Question '+esc(h.question)+'</span><a class="btn btn-sm" href="'+caseHash(c.id,q?c.questions.indexOf(q):0)+'">Revisit</a></div>';
+ }).join("");
+ $("view").innerHTML=head("PRACTICE PROGRESS","See what you know — and what to fix","Every attempt teaches you something. Use wrong answers and low-confidence topics to decide what to revise next.",'<button class="btn" data-action="export">Export progress ↗</button>')+
+ '<div class="stat-grid">'+metric("✦",stats.count?stats.percent+"%":"—","Current practice accuracy","Across submitted practice answers")+
+ metric("▤",state.learned.length+"/"+EYE_NOTES.length,"Core conditions revised","Red-listed scope")+
+ metric("◈",stats.count,"Practice questions answered","Correct + incorrect")+
+ metric("⌁",done.filter(([id,a])=>a.correct===false).length,"Answers to revisit","Review mistakes to learn")+'</div>'+
+ '<div class="dashboard-cols"><section class="panel"><div class="panel-head"><div><h2>Review your mistakes</h2><p>Work through explanations, then try a question again.</p></div><button class="btn btn-sm btn-primary" data-action="review-mistakes">Review all ↗</button></div>'+
+ (list||'<div class="empty"><h3>No incorrect answers currently saved</h3><p>Start practising and review each explanation as it appears.</p><a class="btn btn-primary" href="#practice">Start practice ↗</a></div>')+'</section>'+
+ '<section class="panel"><div class="panel-head"><div><h2>Recent practice</h2><p>Attempt history stays saved even if you retry a question.</p></div></div>'+
+ (history||'<div class="empty"><h3>No attempts yet</h3><p>Start a case to build your revision history.</p></div>')+'</section></div>';
 }
 function renderLectures(){
  let choices=["All",...new Set(SLIDES.map(x=>x.module))].sort();let slides=SLIDES.filter(s=>(filterLectures==="All"||s.module===filterLectures)&&norm(s.name+" "+s.module).includes(norm(searchText)));
@@ -274,16 +350,16 @@ function renderLectures(){
  '<div class="toolbar"><label class="search-field"><span>⌕</span><input id="lectures-search" type="search" aria-label="Search lectures" placeholder="Find lecture titles…" value="'+esc(searchText)+'"></label><select id="lecture-module" class="select" aria-label="Select lecture module">'+choices.map(x=>'<option value="'+esc(x)+'" '+(x===filterLectures?"selected":"")+'>'+esc(x)+'</option>').join("")+'</select></div><p class="tiny-note">'+slides.length+' lecture references shown</p><div class="lectures-list">'+slides.map(s=>'<a class="lecture-item" href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer"><span>▥</span><div><b>'+esc(s.name)+'</b><small>'+esc(s.module)+'</small></div><span>↗</span></a>').join("")+'</div>';
 }
 const Flash=window.createMuaazFlashcards({notes:EYE_NOTES,studyGroups:window.MED_PAPER_GROUPS,getState:()=>state,save,goto,view:()=>$("view"),esc,norm,badge,toast,render});
-function render(){clearInterval(currentTimer);let r=decodeURIComponent(location.hash.replace(/^#/,"")||"home").split("/");let page=r[0]||"home";if(!["home","notes","note","cases","case","mocks","mock","result","leaderboard","lectures","flashcards","study"].includes(page))page="home";setCrumb(page);setIdentity();
+function render(){clearInterval(currentTimer);let r=decodeURIComponent(location.hash.replace(/^#/,"")||"home").split("/");let page=r[0]||"home";if(!["home","notes","note","cases","practice","case","mocks","mock","result","leaderboard","lectures","flashcards","study"].includes(page))page="home";setCrumb(page);setIdentity();
  try{
   if(page==="home")renderHome();
   else if(page==="notes")renderNotes();
   else if(page==="note")renderDetail(r.slice(1).join("/"));
-  else if(page==="cases")renderCases();
+  else if(page==="cases"||page==="practice")renderCases();
   else if(page==="case")renderCase(r[1],r[2]);
-  else if(page==="mocks")renderMocks();
-  else if(page==="mock")renderMock(r[1]);
-  else if(page==="result")renderResult(r[1]);
+  else if(page==="mocks"){goto("#practice");return}
+  else if(page==="mock"){goto("#practice");return}
+  else if(page==="result"){goto("#practice");return}
   else if(page==="leaderboard")renderLeaderboard();
   else if(page==="lectures")renderLectures();
   else if(page==="flashcards")Flash.overview();
@@ -336,14 +412,18 @@ document.addEventListener("click",e=>{
   return}
  if(action==="module"){notePaper=el.dataset.paper||"All";noteSubject=el.dataset.subject||"All";filterNotes="All";searchText="";goto("#notes");return}
  if(action==="filter"){const section=el.dataset.section;if(section==="notes")filterNotes=el.dataset.value;else if(section==="cases")filterCases=el.dataset.value;render();return}
+ if(action==="review-mistakes"){filterCases="Mistakes";casePaper="All";caseSubject="All";searchText="";goto("#practice");return}
  if(action==="learn"){learnToggle(el.dataset.name);return}
  if(action==="save"){saveToggle(el.dataset.name);return}
  if(action==="back-notes"){goto("#notes");return}
- if(action==="back-cases"){goto("#cases");return}
+ if(action==="back-cases"){goto("#practice");return}
  if(action==="back-mocks"){goto("#mocks");return}
  if(action==="quick-check"){const note=EYE_NOTES.find(n=>n.name===el.dataset.name);if(!note)return;const answer=($("quick-answer")?.value||"").trim();if(!answer){toast("Type 1–3 words");return}const correct=norm(answer)===norm(note.answer)||norm(answer).includes(norm(note.answer));state.quickChecks[note.name]={answer,correct};save();render();return}
- if(action==="answer-case"){const c=CASES.find(x=>String(x.id)===el.dataset.case),q=c?.questions[Number(el.dataset.index)];if(!q)return;state.caseAnswers[qrKey(c,q)]={answer:el.dataset.letter,correct:el.dataset.letter===q.answer,time:Date.now()};save();render();return}
- if(action==="answer-vsaq"){const c=CASES.find(x=>String(x.id)===el.dataset.case),q=c?.questions[Number(el.dataset.index)];if(!q)return;const answer=($("case-free")?.value||"").trim();if(!answer){toast("Type a short answer");return}const acc=[q.answer,...(q.accepted||[])].map(norm);state.caseAnswers[qrKey(c,q)]={answer,correct:acc.includes(norm(answer)),time:Date.now()};save();render();return}
+ if(action==="answer-case"){const c=CASES.find(x=>String(x.id)===el.dataset.case),q=c?.questions[Number(el.dataset.index)];if(!q||state.caseAnswers[qrKey(c,q)])return;const correct=el.dataset.letter===q.answer;state.caseAnswers[qrKey(c,q)]={answer:el.dataset.letter,correct,time:Date.now()};state.practiceHistory.push({caseId:c.id,question:q.number,correct,answer:el.dataset.letter,time:Date.now()});save();render();if(typeof requestAnimationFrame==="function")requestAnimationFrame(()=>document.getElementById("answer-feedback")?.scrollIntoView({behavior:"smooth",block:"nearest"}));return}
+ if(action==="answer-vsaq"){const c=CASES.find(x=>String(x.id)===el.dataset.case),q=c?.questions[Number(el.dataset.index)];if(!q||state.caseAnswers[qrKey(c,q)])return;const answer=($("case-free")?.value||"").trim();if(!answer){toast("Type a short answer");return}state.caseAnswers[qrKey(c,q)]={answer,correct:null,time:Date.now(),selfReviewed:false};save();render();if(typeof requestAnimationFrame==="function")requestAnimationFrame(()=>document.getElementById("answer-feedback")?.scrollIntoView({behavior:"smooth",block:"nearest"}));return}
+ if(action==="mark-practice-vsaq"){const c=CASES.find(x=>String(x.id)===el.dataset.case),q=c?.questions.find(x=>String(x.number)===el.dataset.number);if(!q)return;const a=state.caseAnswers[qrKey(c,q)];if(!a)return;a.correct=el.dataset.correct==="1";a.selfReviewed=true;state.practiceHistory.push({caseId:c.id,question:q.number,correct:a.correct,answer:a.answer,time:Date.now()});save();render();return}
+ if(action==="practice-retry"){const c=CASES.find(x=>String(x.id)===el.dataset.case),q=c?.questions[Number(el.dataset.index)];if(!q)return;delete state.caseAnswers[qrKey(c,q)];save();render();return}
+ if(action==="practice-reset-case"){const c=CASES.find(x=>String(x.id)===el.dataset.case);if(!c)return;for(const q of c.questions)delete state.caseAnswers[qrKey(c,q)];save();goto(caseHash(c.id,0));return}
  if(action==="case-jump"){const c=CASES.find(x=>String(x.id)===el.dataset.case);if(!c)return;const idx=Number(el.dataset.index);if(idx<0||idx>=c.questions.length)return;goto(caseHash(c.id,idx));return}
  if(action==="flag"){state.flags[el.dataset.key]=!state.flags[el.dataset.key];save();render();return}
  if(action==="mock-start"){startMock(el.dataset.paper);return}
@@ -377,7 +457,7 @@ document.addEventListener("change",e=>{if(Flash.handleChange(e.target))return;if
 window.addEventListener("hashchange",()=>{searchText="";$("sidebar")?.classList.remove("open");window.scrollTo({top:0,behavior:"auto"});render()});
 window.addEventListener("keydown",e=>{if(Flash.handleKey(e))return;if(e.key==="Escape")closeModal()});
 window.addEventListener("beforeunload",()=>{clearInterval(currentTimer)});
-if(EYE_NOTES.length!==66||CASES.length!==141||totalQuestions!==1253||SLIDES.length!==72||Flash.cards.length!==1254){console.warn("MuaazMed content validation:",{notes:EYE_NOTES.length,cases:CASES.length,questions:totalQuestions,slides:SLIDES.length})}
+if(EYE_NOTES.length!==66||CASES.length!==151||totalQuestions!==1333||SLIDES.length!==72||Flash.cards.length!==1254){console.warn("MuaazMed content validation:",{notes:EYE_NOTES.length,cases:CASES.length,questions:totalQuestions,slides:SLIDES.length})}
 if(!location.hash)history.replaceState(null,"","#home");
 setIdentity();render();ensureAuth();
 })();

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f6f7fb">
-<meta name="description" content="MuaazMed • Wits GEMP1 Integrated End-of-Year Exam: 66 core conditions, case-cluster practice, 120-question mocks and progress tracking.">
+<meta name="description" content="MuaazMed • Wits GEMP1 Integrated End-of-Year Exam: 66 core conditions, case-cluster practice, interactive practice questions, integrated cases and progress tracking.">
 <title>MuaazMed — GEMP1 Deep Flashcards</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,20 +12,20 @@
 <link rel="stylesheet" href="assets/main.css?v=4">
 <link rel="stylesheet" href="assets/flashcards.css?v=1">
 <link rel="stylesheet" href="assets/study-groups.css?v=1">
+<link rel="stylesheet" href="assets/practice.css?v=1">
 </head>
 <body>
 <div class="app-shell">
  <aside class="sidebar" id="sidebar">
   <a class="brand" href="#home" aria-label="MuaazMed Home"><span class="brand-mark">M<span class="brand-pulse">+</span></span><span class="brand-text">muaazmed<span>.</span><small>THE WITS STUDY SPACE</small></span></a>
   <div class="term-pill"><span class="live-dot"></span> GEMP1 · EXAM PREP 2026</div>
-  <div class="nav-section">YOUR WORKSPACE</div>
+  <div class="nav-section">EXAM PREP</div>
   <nav class="nav-stack" aria-label="Primary navigation">
    <a data-nav="home" href="#home"><span class="nav-icon">⌂</span> Overview</a>
+   <a data-nav="practice" href="#practice"><span class="nav-icon">◎</span> Practice Questions <span class="nav-count">NEW</span></a>
    <a data-nav="notes" href="#notes"><span class="nav-icon">▤</span> Core condition notes <span class="nav-count">66</span></a>
    <a data-nav="flashcards" href="flashcards.html#flashcards"><span class="nav-icon">◈</span> Deep flashcards <span class="nav-count">1,254</span></a>
-   <a data-nav="cases" href="#cases"><span class="nav-icon">◈</span> Clinical case bank</a>
-   <a data-nav="mocks" href="#mocks"><span class="nav-icon">▣</span> Mock exam centre</a>
-   <a data-nav="leaderboard" href="#leaderboard"><span class="nav-icon">✧</span> Scoreboard</a>
+   <a data-nav="leaderboard" href="#leaderboard"><span class="nav-icon">✧</span> My progress</a>
    <a data-nav="lectures" href="#lectures"><span class="nav-icon">▥</span> Lecture library</a>
   </nav>
   <div class="nav-section">MORE MUAAZMED</div>
@@ -36,7 +36,7 @@
    <a href="msk.html" target="_blank" rel="noopener"><span class="nav-icon">◌</span> MSK platform <span class="external-mark">↗</span></a>
   </nav>
   <div class="sidebar-bottom">
-   <div class="focus-card"><div class="tiny-tag">YOUR TARGET</div><b>90%+ starts here.</b><p>Prioritise mechanisms, red flags and safe next steps — then practise in clinical clusters.</p><a href="#mocks">Start practising <span>↗</span></a></div>
+   <div class="focus-card"><div class="tiny-tag">YOUR TARGET</div><b>90%+ starts here.</b><p>Prioritise mechanisms, red flags and safe next steps — then practise in clinical clusters.</p><a href="#practice">Start practising <span>↗</span></a></div>
    <button class="account-sidebar" data-action="account"><span class="avatar">G</span><span class="account-identity"><strong id="side-name">Guest student</strong><small id="side-status">Progress saved on this device</small></span><span>⚙</span></button>
   </div>
  </aside>
@@ -65,8 +65,11 @@
 <script defer src="data/flashcards.js?v=1"></script>
 <script defer src="data/flashcards-deep.js?v=1"></script>
 <script defer src="data/extra-clusters-2.js?v=1"></script>
+<script defer src="data/integrated-part-a.js?v=1"></script>
+<script defer src="data/integrated-part-b.js?v=1"></script>
+<script defer src="data/integrated-part-c.js?v=1"></script>
 <script defer src="data/paper-groups.js?v=1"></script>
 <script defer src="assets/flashcards-ui.js?v=3"></script>
-<script defer src="assets/app.js?v=8"></script>
+<script defer src="assets/app.js?v=9"></script>
 </body>
 </html>

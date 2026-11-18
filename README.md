@@ -6,9 +6,9 @@ An independent Wits GEMP1 end-of-year revision platform on GitHub Pages.
 
 - 66 conditions verified from the **red-coloured text** in the user-supplied Wits core list (pp. 5–7).
 - Every note includes presenting features, mechanism, findings, investigations, safety, differentials, exam memory hook and VSAQ.
-- 141 clinical case clusters and 1,253 questions: 31 student-bank clusters (417 questions) plus 110 author-created clusters (836 questions). Each core condition has at least two linked clinical clusters.
-- Two separate timed mock papers: 120 questions and 180 minutes each, about 18 clusters per paper.
-- Four-option SBAs, data interpretation, short VSAQs, answer review and self-marking.
+- **151 clinical clusters / 1,333 questions**, including 10 newly authored multisystem cases (80 questions) with option-level rationales. Every red-listed condition retains at least two linked clusters.
+- **Practice-first interface:** timed mock pages are removed from navigation and old mock URLs redirect to Practice Questions. Historical local mock data is left intact for compatibility.
+- Four-option SBAs reveal correct/incorrect and expected answer immediately; authored distractor rationales explain each option. VSAQs show the expected 1–3-word answer on submission, followed by self-marking.
 - Saved learning status, personal performance, bookmarks and local JSON export.
 - Guest mode with no login wall. Legacy Renal/GIT/Past Papers and the MSK platform remain accessible.
 - 72 user-provided Google Drive lecture reference links; original PDFs are not republished.
@@ -36,17 +36,17 @@ Host this repository through GitHub Pages using the main branch/root. Keep the e
 
 **[Follow the step-by-step browser and CLI setup guide](SETUP_BACKEND.md)**. Guest practice requires no backend; cloud accounts and AI remain inactive until the project is configured.
 
-## Activate optional accounts, progress sync and community scoreboard
+## Activate optional accounts and cloud progress sync
 
-Accounts and online scoreboard are NOT active until you connect an external backend. Guest mode works immediately.
+Accounts and cloud sync remain inactive until you connect an external backend. Guest mode, mistake review, practice history and personal progress work without accounts. The old mock-based community leaderboard is not displayed in the practice-first UI.
 
 1. Create a Supabase project and run supabase/schema.sql in its SQL Editor.
 2. Enable email-password authentication and confirmation; set Site URL to https://muaazmed.com. Add the correct allowed redirects.
 3. Edit backend-config.js and set the Supabase URL and PUBLISHABLE key only. This key may be public when Row Level Security is correctly configured.
 4. Deploy the site. Users can then create an optional account and sync learning progress.
-5. Public leaderboard participation must be opted into; the SQL function exposes nicknames and mock best scores only.
+5. Cloud progress can then store personal study state. Public practice ranking would require a separately designed, consent-based and tamper-resistant backend, not the old mock-results leaderboard.
 
-**Limitations:** Cloud sync is last-write oriented, not conflict-safe for concurrent devices. Client-submitted mock scores are not cheat-resistant, so the scoreboard is for personal motivation, not formal academic ranking.
+**Limitations:** Cloud sync is last-write oriented, not conflict-safe for concurrent devices. Browser-graded practice marks and VSAQ self-marks are motivational rather than anti-cheat secure.
 
 ## Activate the AI tutor
 
@@ -101,3 +101,12 @@ The site now presents core notes, flashcard decks and case-cluster filters under
 These are 91 subject placements covering **66 unique red-highlighted core conditions**; overlapping conditions are shown in multiple study subjects. Bone Tumour (Osteosarcoma) appears in both MSK and Haem/Onc because it bridges the two topics. This categorisation is derived from the user-supplied `GEMP1_Core_Conditions_by_Paper-3 2.pdf`, with MSK and Haem/Onc divided for navigation. **The official Wits student information guide does not guarantee which subject is tested in which paper.** The mock papers remain independent, mixed practice selections.
 
 The Flashcards section no longer depends on browser 3D back-face rendering: revealing an answer displays a high-contrast white card with large dark text. Cards still flip conceptually (question → answer), accept Again/Hard/Good/Easy ratings and retain existing review scheduling. This change does not reset guest or account progress.
+
+## Practice Questions redesign (November 2026)
+
+- Main **EXAM PREP → Practice Questions** navigation, replacing the timed Mock Exam Centre.
+- Questions and cases grouped by your Paper 1 (BCMH/CVS/Respiratory) and Paper 2 (Renal/GIT/MSK/Haem-Onc) study split, then by core condition in expandable sections. The official guide does **not** guarantee a fixed paper-specific distribution.
+- The **Integrated clinical cases** section contains 10 original multisystem clinical presentations (80 questions: 60 four-option SBAs including data interpretation, plus 20 VSAQs) inspired by the format of the supplied *3. Example IEYA questions.pdf*, not copied from an official paper.
+- SBAs reveal the expected answer and a rationale immediately after selection; the newly authored integrated cases additionally explain individual distractors. VSAQs show the short answer on submission and are self-marked for equivalent wording.
+- Practice history, answer accuracy, persistent mistake review and per-case restart are available. Retrying does not erase the previous attempt history.
+- The original and student-contributed cases remain available, but vary in review quality. Do not equate question count with readiness; verify important clinical facts against course materials.
