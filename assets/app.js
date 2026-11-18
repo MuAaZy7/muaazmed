@@ -94,7 +94,7 @@ function renderHome(){
  '</section><div class="dashboard-cols"><div><section class="panel"><div class="panel-head"><div><h2>Master the core, one system at a time</h2><p>Paper 1: BCMH, CVS, Respiratory. Paper 2: Renal, GIT, MSK, Haem/Onc.</p></div><a href="#notes" class="btn btn-sm">View all ↗</a></div>'+subjectTiles+'<div class="notice">Source transparency: the 66-condition scope follows the red text in your Wits document. Summaries are original educational syntheses; case questions include student-bank contributions and separately identified original practice.</div></section></div><div><section class="panel"><div class="panel-head"><div><h2>Your revision pulse</h2><p>Your progress is private to this device in guest mode.</p></div></div><div class="progress-meta"><span>Conditions revised</span><b>'+state.learned.length+' / '+EYE_NOTES.length+'</b></div><div class="progress-track"><span style="width:'+pct+'%"></span></div><div class="rule"></div>'+
  task("▤","Finish your next condition","Short mechanism + discriminators + red flags","#notes")+
  task("◈","Flip active-recall flashcards","1,254 cards · due and missed reviews","flashcards.html#flashcards")+
- task("◈","Practise integrated clinical cases","Immediate corrections and answer reasoning","#practice")+
+ task("◈","Practise advanced clinical cases","66 new condition-based challenges with explanations","#practice")+
  task("▣","Review your mistakes","Learn from the feedback after every answer","#practice")+
  '<div class="notice good"><strong>Practice so far:</strong> '+quiz.count+' questions answered · '+(quiz.count?quiz.percent+"% accuracy":"no answers yet")+'.</div></section></div></div>';
 }
@@ -158,7 +158,7 @@ function renderDetail(name){
   section("⇄","Differentiate from common mimics",n.differentiate,""),
   section("★","Exam memory hook",n.memory,"ok")
  ].join("");
- const links=rels.sort((a,b)=>(a.id||0)-(b.id||0)).map((c,i)=>'<div class="linked-case"><span>◈</span><strong>Case '+(i+1)+': '+esc(c.title)+'</strong><a href="'+caseHash(c.id)+'">Practise ↗</a></div>').join("")||'<p class="tiny-note">A full case cluster is being prepared for this condition. Start with its VSAQ and use the clinical case bank for integrated practice.</p>';
+ const links=rels.sort((a,b)=>(b.difficulty==="Challenge")-(a.difficulty==="Challenge")||(a.id||0)-(b.id||0)).map((c,i)=>'<div class="linked-case"><span>◈</span><strong>Case '+(i+1)+': '+esc(c.title)+(c.difficulty==="Challenge"?" · HARD":"")+'</strong><a href="'+caseHash(c.id)+'">Practise ↗</a></div>').join("")||'<p class="tiny-note">A full case cluster is being prepared for this condition. Start with its VSAQ and use the clinical case bank for integrated practice.</p>';
  const lectures=slides.map(s=>'<div class="linked-case"><span>▥</span><strong>'+esc(s.name)+'</strong><a href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer">Slides ↗</a></div>').join("")||'<p class="tiny-note">Browse the lecture library to find supporting course material.</p>';
  $("view").innerHTML='<div class="detail-layout"><div class="detail-main"><button class="back-link" data-action="back-notes">← Back to core conditions</button><div class="detail-hero"><div class="detail-top">'+badge("GEMP1 red-listed","red")+labelsFor(n.name)+(learned?badge("Revised ✓","green"):"")+'</div><h1>'+esc(n.name)+'</h1><p>'+esc(n.presentation)+'</p><div class="page-actions"><button class="btn '+(learned?"btn-success":"btn-primary")+'" data-action="learn" data-name="'+esc(n.name)+'">'+(learned?"✓ Marked as revised":"+ Mark as revised")+'</button><button class="btn" data-action="save" data-name="'+esc(n.name)+'">'+(saved?"★ Saved":"☆ Save note")+'</button><button class="btn btn-soft" data-action="flash-start" data-scope="condition:'+esc(n.name)+'" data-mode="All" data-limit="0">◈ Deep flashcards</button></div></div>'+sections+'<div class="notice">Study rule: be able to recognise the presentation, explain the underlying mechanism, interpret basic investigations and state the safest supervised action. These summaries are revision aids, not a replacement for your original Wits teaching material.</div></div><aside class="detail-aside"><section class="aside-box"><div class="overline">ACTIVE RECALL · FLASHCARDS</div><h3>'+Flash.statsFor(n.name).total+' cards for this condition</h3><p>Clinical recognition, mechanisms, tests, clinical data, red flags, mimics and multiple VSAQs.</p><div class="progress-meta"><span>Mastered</span><b>'+Flash.statsFor(n.name).mastered+' / '+Flash.statsFor(n.name).total+'</b></div><div class="progress-track"><span style="width:'+(Flash.statsFor(n.name).mastered/Math.max(1,Flash.statsFor(n.name).total)*100)+'%"></span></div><button class="btn btn-primary btn-wide" style="margin-top:14px" data-action="flash-start" data-scope="condition:'+esc(n.name)+'" data-mode="All" data-limit="0">Study all flashcards →</button><p class="tiny-note" style="margin-top:10px">Flip the card and rate your recall to schedule future reviews. No fixed card cap.</p></section><section class="aside-box"><h3>Linked case practice</h3>'+links+'</section><section class="aside-box"><h3>Related Wits lectures</h3>'+lectures+'</section></aside></div>';
 }
@@ -168,7 +168,7 @@ function practiceCaseStats(c){const saved=c.questions.map(q=>state.caseAnswers[q
 function practiceCaseCard(c){
  const st=practiceCaseStats(c),tags=caseTags(c);
  return '<article class="practice-case-card"><div class="practice-case-meta">'+
-  badge(c.isIntegrated?"Integrated reasoning":"Core condition","blue")+
+  badge(c.difficulty==="Challenge"?"Challenge · hard":c.isIntegrated?"Integrated reasoning":"Core condition",c.difficulty==="Challenge"?"amber":"blue")+
   '<span>'+c.questions.length+' questions · '+c.questions.filter(q=>q.type==="VSAQ").length+' VSAQ</span></div>'+
   '<h4>'+esc(c.title)+'</h4><p>'+clip(c.scenario,155)+'</p>'+
   '<div class="practice-case-footer"><span>'+st.attempted+' / '+st.total+' attempted'+(st.wrong?' · <b class="practice-miss">'+st.wrong+' to review</b>':"")+'</span>'+
@@ -184,7 +184,7 @@ function needsPracticeReview(c){
 }
 function practiceFilter(c){
  const tags=caseTags(c);
- const scope=filterCases==="All"||(filterCases==="Core"?!c.isIntegrated&&c.coreNames.length>0:filterCases==="Integrated"?!!c.isIntegrated:filterCases==="Mistakes"?needsPracticeReview(c):filterCases==="Extension"?c.coreNames.length===0:false);
+ const scope=filterCases==="All"||(filterCases==="Challenge"?c.difficulty==="Challenge":filterCases==="Core"?!c.isIntegrated&&c.coreNames.length>0:filterCases==="Integrated"?!!c.isIntegrated:filterCases==="Mistakes"?needsPracticeReview(c):filterCases==="Extension"?c.coreNames.length===0:false);
  const paper=casePaper==="All"||tags.some(t=>t.paper===casePaper);
  const subject=caseSubject==="All"||tags.some(t=>t.subject===caseSubject&&(casePaper==="All"||t.paper===casePaper));
  const query=!searchText||norm(c.title+" "+c.module+" "+c.coreNames.join(" ")+" "+c.scenario).includes(norm(searchText));
@@ -201,7 +201,7 @@ function renderCases(){
    if(caseSubject!=="All"&&caseSubject!==subject.name)continue;
    const conditionBlocks=[];
    for(const name of subject.conditions){
-    const linked=ordinary.filter(c=>c.coreNames.some(x=>norm(x)===norm(name)));
+    const linked=ordinary.filter(c=>c.coreNames.some(x=>norm(x)===norm(name))).sort((a,b)=>(b.difficulty==="Challenge")-(a.difficulty==="Challenge")||(a.id||0)-(b.id||0));
     if(!linked.length)continue;
     conditionBlocks.push('<details class="practice-condition"'+(caseSubject!=="All"?' open':'')+'><summary><span>'+esc(name)+'</span><span>'+linked.length+' cases <span class="practice-caret">⌄</span></span></summary><div class="practice-case-list">'+linked.map(practiceCaseCard).join("")+'</div></details>');
    }
@@ -210,12 +210,12 @@ function renderCases(){
   if(subjectBlocks.length)groups+='<section class="practice-paper-section"><header><h2>'+esc(paper.paper)+'</h2><span>'+paper.subjects.map(s=>esc(s.name)).join(" · ")+'</span></header>'+subjectBlocks.join("")+'</section>';
  }
  $("view").innerHTML=head("PRACTICE QUESTIONS","Learn from every answer","Choose a subject or a core condition. Answer an SBA to reveal the correct option and its explanation straight away. VSAQs show the expected short answer for self-review.","")+
- '<div class="practice-intro">Built around the GEMP1 integrated-assessment examples: one clinical presentation followed by mechanisms, discriminating findings, investigations, data and safe actions. These are original/student-derived questions, not an official Wits examination. Study-paper headings are for revision, not guaranteed exam allocation.</div>'+
+ '<div class="practice-intro">Built around the GEMP1 integrated-assessment examples: one clinical presentation followed by mechanisms, discriminating findings, investigations, data and safe actions. These are original/student-derived questions, not an official Wits examination. Challenge cases use close differential diagnoses and lab interpretation. Study-paper headings are for revision, not guaranteed exam allocation.</div>'+
  '<div class="practice-summary-grid"><div><strong>'+CASES.length+'</strong><span>Total clinical clusters</span></div><div><strong>'+totalQuestions+'</strong><span>Practice questions</span></div><div><strong>'+questionStats().percent+'%</strong><span>Your answer accuracy</span></div><div><strong>'+Object.values(state.caseAnswers).filter(x=>!x.correct).length+'</strong><span>Answers to review</span></div></div>'+
  '<div class="study-filter-toolbar"><label class="search-field"><span>⌕</span><input id="cases-search" type="search" aria-label="Search question practice" placeholder="Search disease, clinical presentation or mechanism…" value="'+esc(searchText)+'"></label>'+
  '<label>Study paper<select id="cases-paper" class="select">'+selectOptions(casePaper,caseSubject)+'</select></label>'+
  '<label>Subject<select id="cases-subject" class="select">'+selectOptions(casePaper,caseSubject,true)+'</select></label></div>'+
- filterBar("cases",["All","Integrated","Core","Mistakes"],filterCases)+
+ filterBar("cases",["All","Challenge","Integrated","Core","Mistakes"],filterCases)+
  '<p class="tiny-note">'+found.length+' distinct clinical clusters shown · '+found.reduce((n,c)=>n+c.questions.length,0)+' questions · Expand a condition to practise its cases.</p>'+
  (integrated.length?'<section class="practice-featured"><div class="practice-featured-head"><div><div class="overline">MULTISYSTEM REASONING</div><h2>Integrated clinical cases</h2><p>Like the Wits examples: a single presentation with linked questions across clinical and basic science tracks.</p></div><span>'+integrated.length+' cases</span></div><div class="practice-case-list">'+integrated.map(practiceCaseCard).join("")+'</div></section>':"")+
  (groups||(!integrated.length?'<div class="empty"><h3>No matching practice cases</h3><p>Change the filters or search terms.</p></div>':""));
@@ -457,7 +457,7 @@ document.addEventListener("change",e=>{if(Flash.handleChange(e.target))return;if
 window.addEventListener("hashchange",()=>{searchText="";$("sidebar")?.classList.remove("open");window.scrollTo({top:0,behavior:"auto"});render()});
 window.addEventListener("keydown",e=>{if(Flash.handleKey(e))return;if(e.key==="Escape")closeModal()});
 window.addEventListener("beforeunload",()=>{clearInterval(currentTimer)});
-if(EYE_NOTES.length!==66||CASES.length!==151||totalQuestions!==1333||SLIDES.length!==72||Flash.cards.length!==1254){console.warn("MuaazMed content validation:",{notes:EYE_NOTES.length,cases:CASES.length,questions:totalQuestions,slides:SLIDES.length})}
+if(EYE_NOTES.length!==66||CASES.length!==219||totalQuestions!==1877||SLIDES.length!==72||Flash.cards.length!==1254){console.warn("MuaazMed content validation:",{notes:EYE_NOTES.length,cases:CASES.length,questions:totalQuestions,slides:SLIDES.length})}
 if(!location.hash)history.replaceState(null,"","#home");
 setIdentity();render();ensureAuth();
 })();
