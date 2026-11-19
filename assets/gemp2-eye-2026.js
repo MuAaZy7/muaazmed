@@ -28,7 +28,7 @@ var selected=function(skipBlock){return bank.filter(function(x){return qualify(x
 var blocks=function(){return Array.from(new Set(selected(true).map(function(x){return x.block}))).sort()};
 function save(){try{localStorage.setItem(key,JSON.stringify(saved))}catch(e){}}
 function buildDeck(){
- var current=selected(false), groupMap={},groups=[];
+ var current=selected(false).sort(function(a,b){return a.section-b.section}), groupMap={},groups=[];
  current.forEach(function(x){
   var group=String(x.section)+"|"+x.case+"|"+x.block;
   if(!groupMap[group]){groupMap[group]=[];groups.push(group)}
@@ -41,7 +41,7 @@ function counts(){var total=bank.length,stored=Object.values(saved);return{total
 function startScreen(){
  var st=counts(), eligible=selected(false).length;
  var out='<div class="g-hero"><a class="g-back" href="index.html#practice">← Back to Practice Questions</a>'+
- '<div class="g-eyebrow">MUA AZ MED / PAST PAPER PRACTICE</div>'+
+ '<div class="g-eyebrow">MUAAZMED / PAST PAPER PRACTICE</div>'+
  '<h1 class="g-title">GEMP2 EYE 2026 <span style="color:#5d7fbe">Recalled Past Papers</span></h1>'+
  '<p class="g-lead">Practise questions reconstructed from the uploaded student-recall sheet. Choose an option to see an immediate verdict and a separate clinical explanation for <strong>all four choices</strong>. The two final source sections are kept as separate integrated case collections.</p>'+
  '<div class="g-tagrow"><span class="g-tag">Paper 1 · BCMH / CVS / Respiratory</span><span class="g-tag">Paper 2 · Renal / GIT / MSK / Haem/Onc</span><span class="g-tag">Six original source sections</span></div></div>';
@@ -112,7 +112,7 @@ function renderQuestion(){
   saved[q.id]={correct:pick===q.correct,selected:pick,at:new Date().toISOString()};save();renderQuestion();
   var feedback=app.querySelector(".g-feedback");if(feedback){feedback.scrollIntoView({behavior:"smooth",block:"nearest"})}
  })});
- el("g-next").addEventListener("click",function(){cursor+=1;renderQuestion();window.scrollTo({top:0,behavior:"instant"})});
+ el("g-next").addEventListener("click",function(){cursor+=1;renderQuestion();window.scrollTo({top:0,behavior:"auto"})});
  el("g-exit").addEventListener("click",startScreen);
  el("g-leave").addEventListener("click",startScreen);
 }
