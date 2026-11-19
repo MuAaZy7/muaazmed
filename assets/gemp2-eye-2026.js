@@ -15,8 +15,11 @@ var sections=[
 var bank=raw.filter(function(x){return x&&Array.isArray(x.options)&&x.options.length===4&&Array.isArray(x.why)&&x.why.length===4&&Number.isInteger(x.correct)&&x.correct>=0&&x.correct<4;}).map(function(x,i){return Object.assign({id:"gemp2-2026-q"+i},x)});
 var key="muaazmed:gemp2eye2026:v1";
 var saved={};try{saved=JSON.parse(localStorage.getItem(key)||"{}")||{}}catch(e){saved={}}
-var config={section:"integrated",paper:"All",block:"All",shuffle:true,missed:false};
-var deck=[],cursor=0,sessionAnswers={};
+var config={section:"all",paper:"All",block:"All",shuffle:false,missed:false};
+var deck=[],cursor=0,sessionAnswers={},playMode="continuous";
+var resumeKey="muaazmed:gemp2eye2026:resume:v2";
+var lastPosition=null;
+try{lastPosition=JSON.parse(localStorage.getItem(resumeKey)||"null")}catch(e){lastPosition=null}
 var escapeHtml=function(x){return String(x==null?"":x).replace(/[&<>"']/g,function(ch){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]})};
 var esc=escapeHtml;
 var el=function(id){return document.getElementById(id)};
@@ -28,15 +31,84 @@ var selected=function(skipBlock){return bank.filter(function(x){return qualify(x
 var blocks=function(){return Array.from(new Set(selected(true).map(function(x){return x.block}))).sort()};
 function save(){try{localStorage.setItem(key,JSON.stringify(saved))}catch(e){}}
 function buildDeck(){
- var current=selected(false).sort(function(a,b){return a.section-b.section}), groupMap={},groups=[];
- current.forEach(function(x){
-  var group=String(x.section)+"|"+x.case+"|"+x.block;
-  if(!groupMap[group]){groupMap[group]=[];groups.push(group)}
-  groupMap[group].push(x)
- });
+ var groups=getGroups(selected(false));
  if(config.shuffle)groups=randomize(groups);
- return groups.reduce(function(arr,g){return arr.concat(groupMap[g])},[]);
+ return groups.reduce(function(arr,g){return arr.concat(g.items)},[]);
 }
+
+/* Stable, named-by-number cluster directory: diagnoses stay hidden until the answer. */
+function clusterKey(x){return String(x.section)+"|"+x.block+"|"+x.case}
+function buildAllGroups(){
+ var result=[],lookup={},perSection={};
+ bank.forEach(function(x){
+  var key=clusterKey(x),g=lookup[key];
+  if(!g){
+   var ordinal=(perSection[x.section]||0)+1;
+   perSection[x.section]=ordinal;
+   g={key:key,section:x.section,block:x.block,paper:x.paper,ordinal:ordinal,items:[]};
+   lookup[key]=g;result.push(g);
+  }
+  g.items.push(x);
+ });
+ return result;
+}
+var allGroups=buildAllGroups();
+var groupsByKey={};allGroups.forEach(function(g){groupsByKey[g.key]=g});
+var byId={};bank.forEach(function(q){byId[q.id]=q});
+function getGroups(questions){
+ var wanted={};questions.forEach(function(q){wanted[q.id]=true});
+ return allGroups.map(function(g){return Object.assign({},g,{items:g.items.filter(function(q){return !!wanted[q.id]})})}).filter(function(g){return g.items.length>0});
+}
+function hasAnswer(q){
+ var a=saved[q.id];return !!(a&&Number.isInteger(a.selected)&&a.selected>=0&&a.selected<=3);
+}
+function groupProgress(g){
+ var done=g.items.filter(hasAnswer);
+ return{done:done.length,total:g.items.length,correct:done.filter(function(q){return saved[q.id].selected===q.correct}).length};
+}
+function firstUnanswered(items){
+ var i=items.findIndex(function(q){return !hasAnswer(q)});
+ return i<0?0:i;
+}
+function keepPosition(){
+ if(!deck.length||cursor<0||cursor>=deck.length)return;
+ lastPosition={ids:deck.map(function(q){return q.id}),index:cursor,mode:playMode,
+  config:{section:config.section,paper:config.paper,block:config.block,shuffle:config.shuffle,missed:config.missed},
+  answers:playMode==="retry"?sessionAnswers:{},updatedAt:new Date().toISOString()};
+ try{localStorage.setItem(resumeKey,JSON.stringify(lastPosition))}catch(e){}
+}
+function beginSession(items,index,mode,restoredAnswers){
+ if(!items.length){startScreen();return}
+ deck=items.slice();cursor=Math.max(0,Math.min(Number(index)||0,deck.length-1));
+ playMode=mode||"cluster";sessionAnswers={};
+ if(playMode!=="retry"){
+  deck.forEach(function(q){if(hasAnswer(q))sessionAnswers[q.id]=saved[q.id].selected});
+ }else if(restoredAnswers){
+  deck.forEach(function(q){if(Number.isInteger(restoredAnswers[q.id]))sessionAnswers[q.id]=restoredAnswers[q.id]});
+ }
+ keepPosition();renderQuestion();
+}
+function jumpToGroup(groupKeyValue){
+ var g=groupsByKey[groupKeyValue];if(!g)return;
+ beginSession(g.items,firstUnanswered(g.items),"cluster");
+}
+function resumeSession(){
+ if(!lastPosition||!Array.isArray(lastPosition.ids))return;
+ var items=lastPosition.ids.map(function(id){return byId[id]}).filter(Boolean);
+ if(!items.length)return;
+ if(lastPosition.config){
+  ["section","paper","block","shuffle","missed"].forEach(function(k){
+   if(Object.prototype.hasOwnProperty.call(lastPosition.config,k))config[k]=lastPosition.config[k]
+  });
+ }
+ beginSession(items,lastPosition.index,lastPosition.mode||"continuous",lastPosition.answers||{});
+}
+function finishPosition(){
+ lastPosition=null;
+ try{localStorage.removeItem(resumeKey)}catch(e){}
+}
+function clusterDescriptor(g){return "Section "+g.section+" · Cluster "+g.ordinal+" · "+g.paper+" · "+g.block}
+
 function counts(){var total=bank.length,stored=Object.values(saved);return{total:total,answered:stored.length,correct:stored.filter(function(x){return x.correct}).length,integrated:bank.filter(function(x){return x.section>=5}).length}}
 function startScreen(){
  var st=counts(), eligible=selected(false).length;
