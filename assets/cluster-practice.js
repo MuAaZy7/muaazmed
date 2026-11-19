@@ -16,9 +16,9 @@ const fromSite=raw.filter(c=>{
   if(!suitable||seen.has(String(c.id)))return false;
   seen.add(String(c.id));return true;
 }).map(c=>({
-  id:"site-"+c.id,scenario:c.scenario||"",source:c.source||"MuaazMed existing practice bank",questions:(c.questions||[]).filter(q=>q&&q.q&&q.answer&&((Array.isArray(q.options)&&q.options.length===4&&/^[ABCD]$/.test(String(q.answer)))||!Array.isArray(q.options))).map((q,i)=>({
-    number:q.number||i+1,q:q.q,type:Array.isArray(q.options)?"SBA":"VSAQ",
-    options:Array.isArray(q.options)?q.options:undefined,answer:String(q.answer),
+  id:"site-"+c.id,scenario:c.scenario||"",source:c.source||"MuaazMed existing practice bank",questions:(c.questions||[]).filter(q=>q&&q.q&&q.answer&&((Array.isArray(q.options)&&q.options.length===4&&/^[ABCD]$/.test(String(q.answer)))||!Array.isArray(q.options)||q.options.length===0)).map((q,i)=>({
+    number:q.number||i+1,q:q.q,type:Array.isArray(q.options)&&q.options.length===4?"SBA":"VSAQ",
+    options:Array.isArray(q.options)&&q.options.length===4?q.options:undefined,answer:String(q.answer),
     accepted:Array.isArray(q.accepted)?q.accepted:[],explain:q.explain||q.point||"Review the correct answer and clinical reasoning.",
     whyOptions:q.whyOptions,point:q.point
   }))
