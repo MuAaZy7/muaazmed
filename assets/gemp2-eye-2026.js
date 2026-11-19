@@ -50,7 +50,7 @@ function buildAllGroups(){
   }
   g.items.push(x);
  });
- return result;
+ return result.sort(function(a,b){return a.section-b.section||a.ordinal-b.ordinal});
 }
 var allGroups=buildAllGroups();
 var groupsByKey={};allGroups.forEach(function(g){groupsByKey[g.key]=g});
@@ -173,9 +173,8 @@ function startScreen(){
  Array.from(app.querySelectorAll("[data-cluster]")).forEach(function(btn){btn.addEventListener("click",function(){jumpToGroup(btn.getAttribute("data-cluster"))})});
 }
 function infoForQuestion(q){
- var count=0,ord=0,seen={};
- deck.forEach(function(x){var k=String(x.section)+"|"+x.case;if(!seen[k]){seen[k]=++count}if(x.id===q.id)ord=seen[k]});
- return "Case cluster "+ord+" · "+sect(q.section).title;
+ var g=groupsByKey[clusterKey(q)];
+ return "Section "+q.section+" · Cluster "+(g?g.ordinal:"?")+" · "+sect(q.section).title;
 }
 function renderQuestion(){
  if(cursor>=deck.length){finishScreen();return}
