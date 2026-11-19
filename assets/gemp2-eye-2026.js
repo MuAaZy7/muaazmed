@@ -111,13 +111,18 @@ function clusterDescriptor(g){return "Section "+g.section+" · Cluster "+g.ordin
 
 function counts(){var total=bank.length,stored=Object.values(saved);return{total:total,answered:stored.length,correct:stored.filter(function(x){return x.correct}).length,integrated:bank.filter(function(x){return x.section>=5}).length}}
 function startScreen(){
- var st=counts(), eligible=selected(false).length;
+ var st=counts(), eligible=selected(false).length, clusterEntries=getGroups(selected(false));
  var out='<div class="g-hero"><a class="g-back" href="index.html#practice">← Back to Practice Questions</a>'+
  '<div class="g-eyebrow">MUAAZMED / PAST PAPER PRACTICE</div>'+
  '<h1 class="g-title">GEMP2 EYE 2026 <span style="color:#5d7fbe">Recalled Past Papers</span></h1>'+
  '<p class="g-lead">Practise questions reconstructed from the uploaded student-recall sheet. Choose an option to see an immediate verdict and a separate clinical explanation for <strong>all four choices</strong>. The two final source sections are kept as separate integrated case collections.</p>'+
  '<div class="g-tagrow"><span class="g-tag">Paper 1 · BCMH / CVS / Respiratory</span><span class="g-tag">Paper 2 · Renal / GIT / MSK / Haem/Onc</span><span class="g-tag">Six original source sections</span></div></div>';
  out+='<div class="g-disclaimer"><strong>Source accuracy:</strong> These are student recollections, not verified official Wits papers. Original missing answer choices were reconstructed for study. <strong>Section 6 (PDF page 9) mainly contains headings, not full question stems</strong>; practice made from those headings is clearly marked as original topic practice. Questions outside your study breakdown are labelled separately. Clinical decisions must follow current local protocols.</div>';
+ if(lastPosition&&Array.isArray(lastPosition.ids)&&lastPosition.ids.length&&byId[lastPosition.ids[lastPosition.index]]){
+  var lastQ=byId[lastPosition.ids[lastPosition.index]],g=groupsByKey[clusterKey(lastQ)];
+  out+='<section class="g-resume"><div><div class="g-eyebrow">PICK UP WHERE YOU LEFT OFF</div><strong>'+esc(clusterDescriptor(g))+'</strong><p>Question '+(Number(lastPosition.index)+1)+' of '+lastPosition.ids.length+' in your saved practice session. Your place and marked answers stay saved on this browser.</p></div><button class="g-btn primary" id="g-resume">Continue studying →</button></section>';
+ }
+
  out+='<div class="g-cards"><div class="g-card"><b>'+st.total+'</b><span>Four-option practice questions</span></div><div class="g-card"><b>'+st.integrated+'</b><span>Integrated-section questions</span></div><div class="g-card"><b>'+st.answered+'</b><span>Questions tried on this device</span></div></div>';
  out+='<h2 class="g-section-title">Select a source section</h2><div class="g-sections">';
  var choices=[{id:"integrated",title:"Integrated EYE (both)",sub:"Final two source pages",desc:"Default · 2026 EYE practice"},{id:"all",title:"All six sections",sub:"Whole uploaded PDF",desc:"Mix older GEMP2 and EYE recall"}].concat(sections);
@@ -134,7 +139,26 @@ function startScreen(){
  out+='<div class="g-control-bottom"><label class="g-switch"><input type="checkbox" id="g-shuffle" '+(config.shuffle?"checked":"")+'> Randomise case-cluster order</label>'+
  '<label class="g-switch"><input type="checkbox" id="g-missed" '+(config.missed?"checked":"")+'> Only previously incorrect questions</label>'+
  '<button class="g-btn primary" id="g-start" '+(eligible?"":"disabled")+'>Start continuous practice ('+eligible+')</button></div>';
- out+='<p class="g-controls-hint">A cluster keeps its questions together, even when randomised. Case diagnoses are hidden while answering; they appear after submission. Paper 1/Paper 2 grouping follows your <em>existing study split</em>, not an asserted official GEMP2 exam allocation.</p></section>';
+ out+='<p class="g-controls-hint">All clusters are listed below. You can jump to any cluster now or while answering. Completed answers and your last location are remembered on this browser. Diagnoses remain hidden until an answer is chosen.</p></section>';
+ out+='<div class="g-directory-header"><div><h2 class="g-section-title" style="margin:0">Jump to any cluster</h2><p>'+clusterEntries.length+' clusters in your selected sections · completed ones are marked</p></div><button class="g-btn" type="button" id="g-all">Show all sections</button></div>';
+ if(!clusterEntries.length)out+='<p class="g-controls-hint">No clusters match these filters. Try all sections or turn off the incorrect-only filter.</p>';
+ var lastSec=null;
+ clusterEntries.forEach(function(g){
+  if(g.section!==lastSec){
+   if(lastSec!==null)out+='</div>';
+   lastSec=g.section;
+   out+='<h3 class="g-group-title">'+esc(sect(g.section).title)+'</h3><div class="g-cluster-grid">';
+  }
+  var p=groupProgress(g),completed=p.done===p.total;
+  out+='<button type="button" class="g-cluster-choice '+(completed?'finished':'')+'" data-cluster="'+esc(g.key)+'">'+
+   '<small>'+esc(sect(g.section).sub)+' · '+esc(g.paper)+'</small>'+
+   '<strong>Cluster '+g.ordinal+'</strong>'+
+   '<span>'+esc(g.block)+'</span>'+
+   '<div class="g-cluster-track"><div style="width:'+Math.round(p.done/p.total*100)+'%"></div></div>'+
+   '<em>'+(completed?'✓ Completed':p.done?'In progress':'Not started')+' · '+p.done+'/'+p.total+' answered</em>'+
+   '</button>';
+ });
+ if(lastSec!==null)out+='</div>';
  out+='<div class="g-smallprint">Fact-check notes: “malignant hyperthermia” replaces the recall typo “hypothermia”; mitral stenosis obstructs left-atrium-to-left-ventricle inflow; the recalled asthma FEV1 change is computed against predicted FEV1. A topic heading alone is never represented as an actually recalled MCQ.</div>';
  out+='<div class="g-reference-links">Relevant clinical references: <a href="https://ginasthma.org/faq/" target="_blank" rel="noopener">GINA asthma diagnostic guidance</a> · <a href="https://www.who.int/teams/global-malaria-programme/case-management/treatment" target="_blank" rel="noopener">WHO malaria management</a> · <a href="https://www.resus.org.uk/professional-library/2025-resuscitation-guidelines/first-aid-guidelines" target="_blank" rel="noopener">Resuscitation Council 2025</a>.</div>';
  app.innerHTML=out;
@@ -143,7 +167,10 @@ function startScreen(){
  el("g-block").addEventListener("change",function(){config.block=this.value;startScreen()});
  el("g-shuffle").addEventListener("change",function(){config.shuffle=this.checked});
  el("g-missed").addEventListener("change",function(){config.missed=this.checked;startScreen()});
- if(el("g-start"))el("g-start").addEventListener("click",function(){deck=buildDeck();cursor=0;sessionAnswers={};if(deck.length)renderQuestion()});
+ if(el("g-start"))el("g-start").addEventListener("click",function(){var items=buildDeck();if(items.length)beginSession(items,firstUnanswered(items),"continuous")});
+ if(el("g-resume"))el("g-resume").addEventListener("click",resumeSession);
+ if(el("g-all"))el("g-all").addEventListener("click",function(){config.section="all";config.paper="All";config.block="All";config.missed=false;startScreen()});
+ Array.from(app.querySelectorAll("[data-cluster]")).forEach(function(btn){btn.addEventListener("click",function(){jumpToGroup(btn.getAttribute("data-cluster"))})});
 }
 function infoForQuestion(q){
  var count=0,ord=0,seen={};
