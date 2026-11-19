@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f6f7fb"><meta name="description" content="Blind clinical case cluster practice for Wits GEMP1. Paper 1 and Paper 2, immediate feedback, VSAQs and randomised case order.">
+<title>Case Clusters — MuaazMed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/main.css?v=4">
+<style>
+#cp-app{max-width:1130px;margin:0 auto;padding-bottom:55px;color:#203858}
+.cp-hero{padding:16px 0 24px}.cp-back{appearance:none;background:none;border:none;display:inline-block;color:#4865a3;font-size:12px;font-weight:800;text-decoration:none;cursor:pointer;margin-bottom:22px}
+.cp-overline,.cp-case-kicker,.cp-qkicker{font-size:11px;font-weight:850;letter-spacing:.12em;color:#546bb2}
+.cp-hero h1{font-size:clamp(27px,3vw,40px);letter-spacing:-.045em;color:#192d50;line-height:1.22;margin:9px 0 13px}
+.cp-hero p{font-size:14px;line-height:1.75;color:#65758d;max-width:730px;margin:0}
+.cp-tabs{display:flex;gap:10px;margin:11px 0 20px}
+.cp-tabs button{font:inherit;flex:1;max-width:190px;padding:14px 18px;border:1px solid #dbe3f1;border-radius:12px;background:white;color:#385079;font-weight:800;cursor:pointer}
+.cp-tabs button.selected{background:#263f79;border-color:#263f79;color:white}
+.cp-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0 25px}
+.cp-stat{background:#fff;border:1px solid #e0e6f1;box-shadow:0 6px 15px #18356208;border-radius:14px;padding:18px 15px;display:grid;gap:6px}
+.cp-stat strong{font-size:26px;font-weight:850;letter-spacing:-.06em;color:#244577}
+.cp-stat span{font-size:11px;color:#667b98;line-height:1.4}
+.cp-config{display:flex;justify-content:space-between;align-items:center;gap:25px;background:linear-gradient(115deg,#f4f7ff,#fff);border:1px solid #d4deef;padding:23px;border-radius:20px}
+.cp-config h2,.cp-list-head h2{font-size:20px;margin:0 0 7px;color:#20395f}
+.cp-config p{font-size:12px;line-height:1.6;color:#64748d;margin:0 0 15px;max-width:650px}
+.cp-toggle{display:inline-flex;align-items:center;gap:10px;font-size:13px;font-weight:800;color:#354d73;cursor:pointer}.cp-toggle input{width:18px;height:18px;accent-color:#425fae}
+.cp-actions{display:flex;gap:10px;flex-wrap:wrap}
+.cp-primary,.cp-secondary{font:inherit;font-size:12px;font-weight:850;border-radius:11px;padding:13px 17px;cursor:pointer;min-height:44px;border:1px solid #d1ddef}
+.cp-primary{background:#2e4f95;color:#fff;border-color:#2e4f95}.cp-primary:hover:not(:disabled){background:#213d78}
+.cp-secondary{background:#fff;color:#355388}.cp-secondary:hover:not(:disabled){background:#edf3ff}
+.cp-primary:disabled,.cp-secondary:disabled{opacity:.45;cursor:not-allowed}
+.cp-list-head{display:flex;justify-content:space-between;gap:15px;align-items:end;margin:30px 0 15px}
+.cp-list-head h2{margin:0}.cp-list-head span{font-size:11px;color:#6c7c94;text-align:right}
+.cp-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.cp-cluster{font:inherit;min-width:0;display:flex;flex-direction:column;align-items:start;text-align:left;gap:8px;border:1px solid #e0e7f1;background:white;border-radius:15px;padding:18px;cursor:pointer;transition:border-color .15s,transform .15s}
+.cp-cluster:hover{border-color:#7d9dce;transform:translateY(-2px)}
+.cp-cluster-number{font-size:10px;font-weight:850;letter-spacing:.09em;color:#5374b1}
+.cp-cluster strong{font-size:16px;color:#223e68}.cp-cluster small{font-size:11px;line-height:1.4;color:#78869a}
+.cp-cluster-cta{color:#345eae;font-size:12px;font-weight:850;margin-top:10px}
+.cp-more{margin-top:17px}.cp-note{font-size:11px;line-height:1.65;color:#778599;margin:23px 0}
+.cp-play{max-width:860px;margin:auto}.cp-play-top{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin:12px 0}
+.cp-play-top .cp-back{margin:0}.cp-pill{border-radius:30px;background:#e6edff;color:#28477b;padding:8px 13px;font-size:11px;font-weight:850}
+.cp-saving{margin-left:auto;color:#4c7a69;font-size:11px}
+.cp-progress{padding:16px 20px;border:1px solid #dce5f3;border-radius:14px;background:#f7f9fe;margin:17px 0}
+.cp-progress>div:first-child{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.cp-progress b{font-size:13px;color:#284678}.cp-progress span{font-size:11px;color:#647790}
+.cp-progress-bar{height:8px;background:#e5eaf6;border-radius:50px;margin-top:13px;overflow:hidden}
+.cp-progress-bar span{display:block;background:#5579c4;height:100%;border-radius:50px}
+.cp-case{background:white;border:1px solid #dfe6f1;border-radius:22px;box-shadow:0 14px 35px #15284a0a;padding:28px}
+.cp-case-kicker{margin-bottom:12px}
+.cp-scenario{font-size:14px;line-height:1.83;white-space:pre-line;padding:19px 22px;background:#f6f8fc;border:1px solid #e0e8f4;border-radius:13px;color:#2d4564;margin-bottom:27px}
+.cp-qkicker{margin-bottom:10px}
+.cp-case h2{font-size:21px;line-height:1.5;letter-spacing:-.02em;color:#1f3558;margin:10px 0 23px}
+.cp-options{display:grid;gap:11px}
+.cp-choice{appearance:none;font:inherit;border:1px solid #d9e3f0;background:#fff;border-radius:13px;width:100%;padding:15px 17px;display:flex;align-items:flex-start;text-align:left;gap:13px;font-size:14px;line-height:1.55;color:#2f4664;cursor:pointer}
+.cp-choice:hover:not(:disabled){border-color:#789ad1;background:#f7faff}
+.cp-choice:disabled{cursor:default;opacity:1}
+.cp-letter{border-radius:8px;background:#edf2f9;color:#3a5686;font-size:12px;font-weight:850;width:31px;min-width:31px;height:31px;display:grid;place-items:center}
+.cp-choice.correct{border:2px solid #4eaa84;background:#effaf4;color:#205b46}
+.cp-choice.incorrect{border:2px solid #d98993;background:#fff0f2;color:#8c3447}
+.cp-choice.correct .cp-letter{background:#ccefdc;color:#166c48}.cp-choice.incorrect .cp-letter{background:#ffe0e4;color:#a63950}
+.cp-answer-mark{margin-left:auto;font-size:18px}
+#cp-vsaq-form label{display:block;color:#566d8e;font-size:12px;font-weight:750;margin-bottom:11px}
+#cp-vsaq-form input{width:100%;min-height:52px;border:1px solid #c9d7e9;border-radius:11px;padding:13px 15px;font:inherit;font-size:15px;color:#1e3557;box-sizing:border-box;margin-bottom:13px}
+#cp-vsaq-form input:disabled{background:#f4f6fa}
+.cp-feedback{margin-top:22px;padding:22px;border:2px solid #df929f;border-radius:16px;background:#fff7f8;scroll-margin:30px}
+.cp-feedback.correct{border-color:#6eb493;background:#f1fbf5}
+.cp-feedback-status{font-size:14px;font-weight:850;color:#a83b56}.cp-feedback.correct .cp-feedback-status{color:#19754d}
+.cp-solution{display:grid;gap:8px;margin:17px 0;background:white;border:1px solid #d5e1ee;border-radius:12px;padding:17px}
+.cp-solution small{font-size:10px;font-weight:850;color:#647b9c;letter-spacing:.09em}
+.cp-solution strong{font-size:16px;line-height:1.6;color:#1f3a63}
+.cp-feedback h3{font-size:15px;color:#25466d;margin:16px 0 7px}.cp-feedback p{font-size:13px;line-height:1.8;color:#304862;margin:7px 0}
+.cp-takeaway{border-top:1px solid #d7e5e9;padding-top:11px}
+.cp-self{margin-top:14px}
+.cp-next{display:flex;justify-content:space-between;gap:10px;margin-top:25px;padding-top:20px;border-top:1px solid #e8eef6}
+.cp-review{margin:28px 0}.cp-review h2{font-size:20px;color:#1e3b66}
+.cp-review article{background:white;border:1px solid #e1e8f2;border-radius:12px;padding:17px;margin:12px 0}
+.cp-review article strong{font-size:13px;color:#1a3761}.cp-review article p{font-size:12px;line-height:1.7;color:#445773}
+button:focus-visible,input:focus-visible{outline:3px solid #7198e7;outline-offset:3px}
+@media(max-width:1050px){.cp-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cp-config{align-items:start;flex-direction:column}}
+@media(max-width:780px){.sidebar.cp-open{transform:translateX(0)!important;left:0!important;display:block!important;z-index:1000}.cp-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.cp-stat{padding:14px}.cp-hero{padding-top:4px}.cp-config,.cp-case{padding:18px}.cp-scenario{padding:15px}}
+@media(max-width:560px){.cp-grid{grid-template-columns:1fr}.cp-list-head{display:block}.cp-list-head span{display:block;text-align:left;margin-top:6px}.cp-config{padding:16px}.cp-play-top .cp-saving{display:none}.cp-case h2{font-size:18px}.cp-tabs button{max-width:none}.cp-next button{flex:1}.cp-hero h1{font-size:28px}}
+@media(prefers-reduced-motion:reduce){.cp-cluster{transition:none}}
+</style>
+</head><body>
+<div class="app-shell"><aside class="sidebar" id="sidebar">
+<a class="brand" href="index.html#home" aria-label="MuaazMed Home"><span class="brand-mark">M<span class="brand-pulse">+</span></span><span class="brand-text">muaazmed<span>.</span><small>THE WITS STUDY SPACE</small></span></a>
+<div class="term-pill"><span class="live-dot"></span> GEMP1 · EXAM PREP 2026</div>
+<div class="nav-section">EXAM PREP</div>
+<nav class="nav-stack" aria-label="Primary navigation">
+<a href="index.html#home"><span class="nav-icon">⌂</span> Overview</a>
+<a href="index.html#practice"><span class="nav-icon">◎</span> Practice Questions</a>
+<a href="cluster-practice.html" class="active" aria-current="page"><span class="nav-icon">▧</span> Case Cluster Practice <span class="nav-count">NEW</span></a>
+<a href="index.html#flow"><span class="nav-icon">⇢</span> Continuous Practice</a>
+<a href="index.html#notes"><span class="nav-icon">▤</span> Core condition notes</a>
+<a href="flashcards.html#flashcards"><span class="nav-icon">◈</span> Deep flashcards</a>
+<a href="index.html#leaderboard"><span class="nav-icon">✧</span> My progress</a>
+<a href="index.html#lectures"><span class="nav-icon">▥</span> Lecture library</a>
+</nav>
+<div class="nav-section">MORE MUAAZMED</div><nav class="nav-stack"><a href="legacy.html#renal"><span class="nav-icon">◌</span> Renal platform</a><a href="legacy.html#git"><span class="nav-icon">◌</span> GIT platform</a><a href="msk.html"><span class="nav-icon">◌</span> MSK platform</a></nav>
+<div class="sidebar-bottom"><div class="focus-card"><div class="tiny-tag">YOUR TARGET</div><b>Build clinical reasoning.</b><p>Practise without diagnosis labels, check every explanation, and improve on your mistakes.</p><a href="index.html#practice">All practice questions <span>↗</span></a></div></div>
+</aside><div class="main-column"><header class="topbar">
+<div class="topbar-left"><button class="mobile-menu" data-cp-mobile-menu aria-label="Toggle navigation">☰</button><span class="breadcrumb">MUAAZMED <span class="slash">/</span> Case Cluster Practice</span></div>
+<div class="topbar-right"><span class="desktop-chip"><span class="live-dot"></span> BUILT FOR WITS GEMP1</span><a class="cp-back" href="index.html#practice" style="margin:0">Practice home ↗</a></div>
+</header><main class="content" id="cp-app" tabindex="-1"><p>Loading case clusters…</p></main>
+<footer class="site-footer"><span>MuaazMed © 2026 · Independent student revision tool, not affiliated with Wits.</span><span>Clinical education only · Original practice ≠ official examination questions.</span></footer></div></div>
+<script defer src="data/paper1-uploaded-clusters.js?v=1"></script>
+<script defer src="data/bank.js"></script>
+<script defer src="data/extra-part-a.js"></script><script defer src="data/extra-part-b.js"></script><script defer src="data/extra-part-c.js"></script><script defer src="data/extra-part-d.js"></script>
+<script defer src="data/extra-clusters-2.js?v=1"></script><script defer src="data/advanced-clusters.js?v=1"></script><script defer src="data/advanced-cases-extra.js?v=1"></script>
+<script defer src="data/integrated-part-a.js?v=1"></script><script defer src="data/integrated-part-b.js?v=1"></script><script defer src="data/integrated-part-c.js?v=1"></script>
+<script defer src="data/paper-groups.js?v=1"></script><script defer src="assets/cluster-practice.js?v=2"></script>
+</body></html>
