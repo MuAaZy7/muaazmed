@@ -181,7 +181,20 @@ function renderQuestion(){
  if(cursor>=deck.length){finishScreen();return}
  var q=deck[cursor],selection=sessionAnswers[q.id],done=selection!==undefined;
  var n=Object.keys(sessionAnswers).length, correct=Object.keys(sessionAnswers).filter(function(id){var x=deck.filter(function(z){return z.id===id})[0];return x&&x.correct===sessionAnswers[id]}).length;
- var out='<div class="g-toolbar"><button class="g-btn" id="g-exit">← Filters</button><div class="g-eyebrow">'+esc(infoForQuestion(q))+'</div></div>'+
+ var out='<div class="g-toolbar"><button class="g-btn" id="g-exit">← Cluster directory</button><div class="g-eyebrow">'+esc(infoForQuestion(q))+'</div></div>'+
+ '<div class="g-play-tools"><label for="g-jump">Jump directly to another cluster</label><select id="g-jump" aria-label="Jump to any cluster"><option value="">Choose any cluster…</option>';
+ var currentSection=null;
+ allGroups.forEach(function(g){
+  if(g.section!==currentSection){
+   if(currentSection!==null)out+='</optgroup>';
+   currentSection=g.section;out+='<optgroup label="'+esc(sect(g.section).title)+'">';
+  }
+  var progress=groupProgress(g);
+  out+='<option value="'+esc(g.key)+'">'+esc('Cluster '+g.ordinal+' · '+g.paper+' · '+g.block+' · '+progress.done+'/'+progress.total+' done')+'</option>';
+ });
+ if(currentSection!==null)out+='</optgroup>';
+ out+='</select><span>Pick any cluster without losing your current position.</span></div>'+
+
  '<div class="g-progress"><div class="g-progress-top"><span>Question '+(cursor+1)+' of '+deck.length+'</span><span>'+n+' answered · '+correct+' correct</span></div><div class="g-progress-track"><div style="width:'+Math.round(cursor/deck.length*100)+'%"></div></div></div>'+
  '<article class="g-question"><div class="g-qmeta">'+esc(sect(q.section).sub)+' · '+esc(q.paper==="Other"?"Other GEMP2":q.paper)+' · '+esc(q.block)+'</div>';
  if(caseText[q.case])out+='<div class="g-case">'+esc(caseText[q.case])+'</div>';
@@ -203,24 +216,27 @@ function renderQuestion(){
   out+='</div><div class="g-context">'+(q.kind==="topic-practice"?"<strong>Source transparency:</strong> The PDF supplies this topic heading but not a complete remembered MCQ. This is a new teaching question, not a recovered exam item.":"<strong>Source transparency:</strong> The prompt is based on a student recall, with reconstructed choices and reviewer explanations.")+
   '<div style="margin-top:6px">Revealed case: <strong>'+esc(q.case.replace(/-/g," "))+'</strong>.</div></div></section>'
  }
- out+='<div class="g-actions"><button class="g-btn" id="g-leave">Back to filters</button><button class="g-btn primary" id="g-next" '+(!done?"disabled":"")+'>'+(cursor===deck.length-1?"Finish session":"Next question →")+'</button></div></article>';
+ out+='<div class="g-actions"><button class="g-btn" id="g-leave">All clusters</button><button class="g-btn" id="g-prev" '+(cursor===0?"disabled":"")+'>← Previous</button><button class="g-btn primary" id="g-next">'+(cursor===deck.length-1?"Finish session":done?"Next question →":"Skip question →")+'</button></div></article>';
  app.innerHTML=out;
  Array.from(app.querySelectorAll("[data-pick]")).forEach(function(btn){btn.addEventListener("click",function(){
   if(sessionAnswers[q.id]!==undefined)return;
   var pick=Number(btn.getAttribute("data-pick"));sessionAnswers[q.id]=pick;
-  saved[q.id]={correct:pick===q.correct,selected:pick,at:new Date().toISOString()};save();renderQuestion();
+  saved[q.id]={correct:pick===q.correct,selected:pick,at:new Date().toISOString()};save();keepPosition();renderQuestion();
   var feedback=app.querySelector(".g-feedback");if(feedback){feedback.scrollIntoView({behavior:"smooth",block:"nearest"})}
  })});
- el("g-next").addEventListener("click",function(){cursor+=1;renderQuestion();window.scrollTo({top:0,behavior:"auto"})});
+ el("g-next").addEventListener("click",function(){cursor+=1;if(cursor>=deck.length){finishScreen();return}keepPosition();renderQuestion();window.scrollTo({top:0,behavior:"auto"})});
+ el("g-prev").addEventListener("click",function(){if(cursor>0){cursor-=1;keepPosition();renderQuestion();window.scrollTo({top:0,behavior:"auto"})}});
+ el("g-jump").addEventListener("change",function(){if(this.value)jumpToGroup(this.value)});
  el("g-exit").addEventListener("click",startScreen);
  el("g-leave").addEventListener("click",startScreen);
 }
 function finishScreen(){
+ finishPosition();
  var n=Object.keys(sessionAnswers).length,k=deck.filter(function(x){return sessionAnswers[x.id]===x.correct}).length;
  var missed=deck.filter(function(x){return sessionAnswers[x.id]!==x.correct});
  app.innerHTML='<div class="g-finish"><div class="g-eyebrow">SESSION COMPLETE</div><h2>'+k+' / '+n+' correct</h2><p>You completed '+n+' question'+(n===1?"":"s")+'. Every result is stored on this device for missed-question revision. Review the '+missed.length+' incorrect question'+(missed.length===1?"":"s")+' to improve clinical reasoning.</p><div class="g-actions"><button class="g-btn primary" id="g-back">Change filters / practise again</button>'+(missed.length?'<button class="g-btn" id="g-redo">Redo missed from this session</button>':'')+'</div></div>';
  el("g-back").addEventListener("click",startScreen);
- if(el("g-redo"))el("g-redo").addEventListener("click",function(){deck=missed;cursor=0;sessionAnswers={};renderQuestion()});
+ if(el("g-redo"))el("g-redo").addEventListener("click",function(){beginSession(missed,0,"retry")});
 }
 document.addEventListener("keydown",function(e){
  if(e.altKey||e.ctrlKey||e.metaKey||/INPUT|SELECT|TEXTAREA/.test(document.activeElement&&document.activeElement.tagName||""))return;
