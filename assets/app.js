@@ -37,7 +37,7 @@ function caseLabel(c){const t=caseTags(c);return t.length?t.slice(0,3).map(x=>x.
 const CASES=RAW_CASES.map(c=>Object.assign({},c,{coreNames:Array.isArray(c.core)?c.core:(c.core?[c.core]:(CORE_MAP[c.id]||[]))}));
 const CORE_CASES=CASES.filter(c=>c.coreNames.length>0);
 const KEY="muaazmed-gemp1-2026-v5";
-const defaultState=()=>({learned:[],saved:[],quickChecks:{},flashcards:{},flashSession:null,caseAnswers:{},practiceHistory:[],flags:{},mockSessions:{},mockHistory:[],guestName:"Guest student",lastVisited:null});
+const defaultState=()=>({learned:[],saved:[],quickChecks:{},flashcards:{},flashSession:null,caseAnswers:{},practiceHistory:[],flowSessions:{},flags:{},mockSessions:{},mockHistory:[],guestName:"Guest student",lastVisited:null});
 let state=defaultState();
 try{const p=JSON.parse(localStorage.getItem(KEY)||"null");if(p&&typeof p==="object")state=Object.assign(defaultState(),p)}catch(e){}
 if(!Array.isArray(state.learned))state.learned=[];
@@ -47,6 +47,7 @@ if(!Array.isArray(state.mockHistory))state.mockHistory=[];
 if(!state.mockSessions||typeof state.mockSessions!=="object")state.mockSessions={};
 if(!state.caseAnswers||typeof state.caseAnswers!=="object")state.caseAnswers={};
 if(!Array.isArray(state.practiceHistory))state.practiceHistory=[];
+if(!state.flowSessions||typeof state.flowSessions!=="object")state.flowSessions={};
 let filterNotes="All",notePaper="All",noteSubject="All",filterCases="All",casePaper="All",caseSubject="All",filterLectures="All",searchText="",currentTimer=null,toastTimer=null;
 let supabase=null,authUser=null,syncTimer=null,authReady=false,communityEntries=[];
 let activeQuestion=null;
@@ -74,7 +75,7 @@ function head(over,title,sub,actions=""){return '<div class="page-head"><div><di
 function feedbackBox(text,style=""){return '<div class="feedback '+style+'">'+text+'</div>'}
 function formatNumber(n){return new Intl.NumberFormat("en-ZA").format(n)}
 function clip(s,n=150){return esc(short(s,n))}
-function setCrumb(page){const labels={home:"Dashboard",notes:"Core notes",note:"Core condition",cases:"Practice Questions",case:"Practice question",mocks:"Practice Questions",mock:"Mock paper",result:"Results",practice:"Practice Questions",flashcards:"Flashcards",study:"Card review",leaderboard:"Progress",lectures:"Lecture library"};$("crumb").textContent=labels[page]||"Dashboard";document.querySelectorAll("[data-nav]").forEach(a=>a.classList.toggle("active",a.dataset.nav===(["note"].includes(page)?"notes":["case"].includes(page)?"practice":["mock","result"].includes(page)?"practice":page==="study"?"flashcards":page)))}
+function setCrumb(page){const labels={home:"Dashboard",notes:"Core notes",note:"Core condition",cases:"Practice Questions",case:"Practice question",mocks:"Practice Questions",mock:"Mock paper",result:"Results",practice:"Practice Questions",flow:"Continuous Practice",flashcards:"Flashcards",study:"Card review",leaderboard:"Progress",lectures:"Lecture library"};$("crumb").textContent=labels[page]||"Dashboard";document.querySelectorAll("[data-nav]").forEach(a=>a.classList.toggle("active",a.dataset.nav===(["note"].includes(page)?"notes":["case"].includes(page)?"practice":["mock","result"].includes(page)?"practice":page==="flow"?"flow":page==="study"?"flashcards":page)))}
 function setIdentity(){let label=authUser?(authUser.user_metadata?.nickname||authUser.email?.split("@")[0]||"Student"):state.guestName;label=short(label,21);$("side-name").textContent=label;$("top-identity").textContent=authUser?"My account":"Guest mode";$("top-avatar").textContent=label.slice(0,1).toUpperCase();$("side-status").textContent=authUser?"Synced account (when online)":"Progress saved on this device";document.querySelector(".avatar").textContent=label.slice(0,1).toUpperCase()}
 function learnToggle(name){const idx=state.learned.indexOf(name);if(idx>=0)state.learned.splice(idx,1);else state.learned.push(name);save();render()}
 function saveToggle(name){const idx=state.saved.indexOf(name);if(idx>=0)state.saved.splice(idx,1);else state.saved.push(name);save();render()}
@@ -85,7 +86,7 @@ function renderHome(){
    const n=s.conditions.length, done=s.conditions.filter(name=>state.learned.includes(name)).length;
    return '<button class="subject-tile" data-action="module" data-paper="'+esc(p.paper)+'" data-subject="'+esc(s.name)+'"><span class="subject-icon">'+iconFor(s.name)+'</span><span><b>'+esc(s.name)+'</b><small>'+done+' / '+n+' conditions revised</small></span><span class="subject-arrow">↗</span></button>';
  }).join("")+'</div></div>').join("");
-  $("view").innerHTML='<section class="hero"><div class="hero-copy"><div class="hero-kicker">THE GEMP1 END-OF-YEAR INTEGRATED ASSESSMENT</div><h1>Build the clinical thinking that gets you <em>exam-ready.</em></h1><p>Every red-listed GEMP1 condition. Condensed high-yield notes, 1,254 clinical flashcards, case clusters and instant-feedback clinical questions — organised around what Wits says it tests.</p><div class="hero-actions"><a class="btn btn-primary" href="#practice">Practice questions ↗</a><a class="btn btn-soft" href="flashcards.html#flashcards">Review flashcards →</a><a class="btn btn-soft" href="#notes">Core conditions ↗</a></div></div><div class="hero-art"><div class="orbit"><div class="hero-ring"><span>'+pct+'%<small>REVISED</small></span></div></div><span class="spark a">✦</span><span class="spark b">✧</span></div></section>'+
+  $("view").innerHTML='<section class="hero"><div class="hero-copy"><div class="hero-kicker">THE GEMP1 END-OF-YEAR INTEGRATED ASSESSMENT</div><h1>Build the clinical thinking that gets you <em>exam-ready.</em></h1><p>Every red-listed GEMP1 condition. Condensed high-yield notes, 1,254 clinical flashcards, case clusters and instant-feedback clinical questions — organised around what Wits says it tests.</p><div class="hero-actions"><a class="btn btn-primary" href="#flow">Start continuous practice ↗</a><a class="btn btn-soft" href="#practice">Individual cases →</a><a class="btn btn-soft" href="flashcards.html#flashcards">Review flashcards →</a><a class="btn btn-soft" href="#notes">Core conditions ↗</a></div></div><div class="hero-art"><div class="orbit"><div class="hero-ring"><span>'+pct+'%<small>REVISED</small></span></div></div><span class="spark a">✦</span><span class="spark b">✧</span></div></section>'+
  '<section class="stat-grid">'+
  metric("◈",EYE_NOTES.length,"GEMP1 core conditions","Official red-listed scope")+
  metric("☷",CASES.length,"Clinical case clusters",totalQuestions+" practice questions")+
@@ -94,7 +95,7 @@ function renderHome(){
  '</section><div class="dashboard-cols"><div><section class="panel"><div class="panel-head"><div><h2>Master the core, one system at a time</h2><p>Paper 1: BCMH, CVS, Respiratory. Paper 2: Renal, GIT, MSK, Haem/Onc.</p></div><a href="#notes" class="btn btn-sm">View all ↗</a></div>'+subjectTiles+'<div class="notice">Source transparency: the 66-condition scope follows the red text in your Wits document. Summaries are original educational syntheses; case questions include student-bank contributions and separately identified original practice.</div></section></div><div><section class="panel"><div class="panel-head"><div><h2>Your revision pulse</h2><p>Your progress is private to this device in guest mode.</p></div></div><div class="progress-meta"><span>Conditions revised</span><b>'+state.learned.length+' / '+EYE_NOTES.length+'</b></div><div class="progress-track"><span style="width:'+pct+'%"></span></div><div class="rule"></div>'+
  task("▤","Finish your next condition","Short mechanism + discriminators + red flags","#notes")+
  task("◈","Flip active-recall flashcards","1,254 cards · due and missed reviews","flashcards.html#flashcards")+
- task("◈","Practise advanced clinical cases","66 new condition-based challenges with explanations","#practice")+
+ task("◈","Work through a full paper flow","One continuous sequence · instant explanations","#flow")+
  task("▣","Review your mistakes","Learn from the feedback after every answer","#practice")+
  '<div class="notice good"><strong>Practice so far:</strong> '+quiz.count+' questions answered · '+(quiz.count?quiz.percent+"% accuracy":"no answers yet")+'.</div></section></div></div>';
 }
@@ -231,6 +232,177 @@ function practiceFeedback(c,q,saved){
  const self=q.type==="VSAQ"?'<div class="practice-self-check"><span>'+(saved.selfReviewed?'Self-marked '+(saved.correct?'correct':'for revision')+'. Change if necessary:':'Did your answer match the expected meaning?')+'</span><button class="btn btn-sm" data-action="mark-practice-vsaq" data-correct="1" data-case="'+c.id+'" data-number="'+q.number+'">✓ I got it</button><button class="btn btn-sm" data-action="mark-practice-vsaq" data-correct="0" data-case="'+c.id+'" data-number="'+q.number+'">Needs revision</button></div>':"";
  return '<section class="practice-answer-feedback '+(pending?"pending":saved.correct?"correct":"incorrect")+'" id="answer-feedback" tabindex="-1">'+mark+choice+'<div class="practice-correct-answer"><small>EXPECTED ANSWER</small><strong>'+esc(correctText)+'</strong></div><p><b>Reasoning:</b> '+esc(q.explain||q.point||"Review this concept in the relevant core note.")+'</p>'+wrongReason+allOptions+self+'</section>';
 }
+
+/* A continuous learning sequence, not a timed or official Wits exam paper.
+   Case IDs are de-duplicated within each paper even if a condition crosses subjects.
+   The user's study split determines grouping, not official exam allocation. */
+function buildFlowQueues(){
+ const out=new Map();
+ for(const p of PAPER_GROUPS){
+  const used=new Set(),ordered=[];
+  function add(c,subject){
+   if(used.has(String(c.id)))return;
+   used.add(String(c.id));ordered.push({c,subject});
+  }
+  for(const s of p.subjects){
+   for(const name of s.conditions){
+    const linked=CASES.filter(c=>!c.isIntegrated&&c.coreNames.some(x=>norm(x)===norm(name)))
+      .sort((a,b)=>(a.difficulty==="Challenge")-(b.difficulty==="Challenge")||(a.id||0)-(b.id||0));
+    linked.forEach(c=>add(c,s.name));
+   }
+   /* Two older extension cases have a known Renal/GIT module. */
+   CASES.filter(c=>!c.isIntegrated&&!c.coreNames.length&&norm(c.module)===norm(s.name))
+     .sort((a,b)=>(a.id||0)-(b.id||0)).forEach(c=>add(c,s.name));
+  }
+  /* Integrated cases appear after the core-system practice for each relevant paper. */
+  CASES.filter(c=>c.isIntegrated&&caseTags(c).some(t=>t.paper===p.paper))
+    .sort((a,b)=>(a.id||0)-(b.id||0)).forEach(c=>add(c,"Integrated"));
+  const items=[];
+  ordered.forEach((item,ci)=>item.c.questions.forEach((q,qi)=>items.push({
+   c:item.c,q,subject:item.subject,caseIndex:ci,questionIndex:qi
+  })));
+  out.set(p.paper,{paper:p.paper,cases:ordered,items,subjects:p.subjects.map(s=>s.name)});
+ }
+ return out;
+}
+const FLOW_QUEUES=buildFlowQueues();
+function flowGetSession(paper){
+ if(!FLOW_QUEUES.has(paper))return null;
+ let sess=state.flowSessions[paper];
+ if(!sess||typeof sess!=="object"||!sess.answers||typeof sess.answers!=="object"){
+  sess={index:0,answers:{},started:Date.now(),updated:Date.now(),finished:false};
+  state.flowSessions[paper]=sess;save();
+ }
+ if(!Number.isInteger(sess.index)||sess.index<0)sess.index=0;
+ const max=FLOW_QUEUES.get(paper).items.length;
+ sess.index=Math.min(sess.index,max);
+ return sess;
+}
+function flowCounts(paper){
+ const pack=FLOW_QUEUES.get(paper),sess=state.flowSessions?.[paper];
+ const records=Object.values(sess?.answers||{}),graded=records.filter(a=>typeof a.correct==="boolean");
+ return {paper,cases:pack.cases.length,total:pack.items.length,answered:records.length,
+  graded:graded.length,correct:graded.filter(a=>a.correct).length,wrong:graded.filter(a=>!a.correct).length,
+  percent:graded.length?Math.round(100*graded.filter(a=>a.correct).length/graded.length):0,
+  started:!!sess,finished:!!sess?.finished};
+}
+function flowPaperCard(p){
+ const pack=FLOW_QUEUES.get(p.paper),progress=flowCounts(p.paper);
+ const pct=Math.round(100*progress.answered/Math.max(1,progress.total));
+ const subjectList=p.subjects.map(s=>s.name).join(" · ");
+ return '<article class="flow-paper-card"><div class="flow-card-top"><span class="flow-paper-label">'+esc(p.paper)+'</span>'+
+ badge(progress.finished?"Completed":progress.answered?"In progress":"Ready",progress.finished?"green":"blue")+'</div>'+
+ '<h2>'+esc(subjectList)+'</h2><p>All mapped clinical case clusters, including challenging SBAs, result interpretation and VSAQs. One question at a time, with immediate feedback.</p>'+
+ '<div class="flow-paper-metrics"><div><strong>'+pack.cases.length+'</strong><span>Distinct cases</span></div><div><strong>'+pack.items.length+'</strong><span>Questions</span></div><div><strong>'+progress.graded+'</strong><span>Graded</span></div></div>'+
+ '<div class="flow-progress-track"><span style="width:'+pct+'%"></span></div>'+
+ '<div class="flow-progress-meta"><span>'+progress.answered+' of '+progress.total+' answered</span><b>'+pct+'%</b></div>'+
+ '<div class="flow-paper-actions"><button class="btn btn-primary" data-action="flow-start" data-paper="'+esc(p.paper)+'">'+(progress.finished?"Review completed flow →":progress.started?"Resume practice →":"Start paper flow →")+'</button>'+
+ (progress.started?'<button class="btn btn-sm" data-action="flow-restart" data-paper="'+esc(p.paper)+'">Start again</button>':"")+'</div></article>';
+}
+function renderFlowLanding(){
+ $("view").innerHTML=head("CONTINUOUS PRACTICE","Keep going. One case after another.","Work through linked clinical case questions without returning to the case library. Choose Paper 1 or Paper 2; every answer reveals its explanation immediately.","")+
+ '<div class="flow-intro"><strong>How it works:</strong> Choose a paper, answer, read the explanation, then press <b>Next</b>. At the last question of a case, Next opens the following case automatically. You can leave and resume without losing your place. No timer and no compulsory submission.</div>'+
+ '<div class="flow-paper-grid">'+PAPER_GROUPS.map(flowPaperCard).join("")+'</div>'+
+ '<p class="flow-qualifier">The Paper 1 / Paper 2 subject split is a student revision organisation, not an official Wits promise about what will appear on either paper. Seven older extension cases without a suitable subject mapping remain in individual-case practice.</p>'+
+ '<a class="btn btn-soft" href="#practice">Browse individual cases instead ↗</a>';
+}
+function flowFeedback(c,q,record,paper){
+ const original=practiceFeedback(c,q,record);
+ return original.replace(/data-action="mark-practice-vsaq"/g,
+  'data-action="flow-mark-vsaq" data-flow-paper="'+esc(paper)+'"');
+}
+function flowItemKey(item){return qrKey(item.c,item.q)}
+function flowCanContinue(item,sess){
+ const answer=sess.answers[flowItemKey(item)];
+ return !!answer&&(item.q.type!=="VSAQ"||answer.selfReviewed===true);
+}
+function renderFlow(paper){
+ const pack=FLOW_QUEUES.get(paper);if(!pack){goto("#flow");return}
+ const sess=flowGetSession(paper),pos=Math.min(sess.index,pack.items.length),scores=flowCounts(paper);
+ const pct=Math.round(100*scores.answered/Math.max(1,scores.total));
+ if(pos===pack.items.length){renderFlowFinish(paper,pack,sess);return}
+ const item=pack.items[pos],c=item.c,q=item.q,record=sess.answers[flowItemKey(item)];
+ const prev=pos>0,nextLabel=pos===pack.items.length-1?"Finish paper →":
+  item.questionIndex===c.questions.length-1?"Next case →":"Next question →";
+ let options="";
+ if(q.type==="SBA"){
+  options='<div class="options practice-options flow-options">'+q.options.map((op,i)=>{
+   const letter="ABCD"[i],className=record?(letter===q.answer?"correct":letter===record.answer?"incorrect":""):"";
+   return '<button class="option '+className+'" data-action="flow-answer" data-paper="'+esc(paper)+'" data-letter="'+letter+'" '+(record?"disabled":"")+'><span class="opt-letter">'+letter+'</span>'+esc(op)+
+     (record&&letter===q.answer?' <span class="practice-option-status">✓ Correct</span>':
+      record&&letter===record.answer?' <span class="practice-option-status">✕ Your answer</span>':"")+'</button>';
+  }).join("")+'</div>';
+ }else{
+  options='<div class="flow-vsaq"><p class="tiny-note">Write a very short answer (1–3 words), or reveal the answer if unsure.</p>'+
+   '<input id="flow-free" class="input" autocomplete="off" placeholder="Type your short answer…" aria-label="Short answer" value="'+esc(record?.answer==="—"?"":record?.answer||"")+'" '+(record?"disabled":"")+'>'+
+   (record?"":'<div class="flow-vsaq-buttons"><button class="btn btn-primary" data-action="flow-submit-vsaq" data-paper="'+esc(paper)+'">Check my answer</button>'+
+    '<button class="btn" data-action="flow-reveal-vsaq" data-paper="'+esc(paper)+'">I don’t know — reveal</button></div>')+
+   '</div>';
+ }
+ const canGo=flowCanContinue(item,sess);
+ const sameCaseStart=item.questionIndex===0;
+ $("view").innerHTML='<div class="flow-shell">'+
+ '<div class="flow-topline"><a href="#flow" class="back-link">← Paper selection</a><span class="flow-session-tag">'+esc(paper)+' · '+esc(item.subject)+'</span><span class="flow-saved">Progress saved</span></div>'+
+ '<div class="flow-main-progress"><div><b>Question '+(pos+1)+' of '+pack.items.length+'</b><span>Case '+(item.caseIndex+1)+' of '+pack.cases.length+' · '+scores.answered+' answered · '+scores.correct+' correct</span></div>'+
+ '<div class="flow-progress-track"><span style="width:'+pct+'%"></span></div></div>'+
+ '<article class="flow-study-card"><div class="flow-scenario-header"><span class="overline">'+esc(paper)+' / '+esc(item.subject)+' · CASE '+(item.caseIndex+1)+'</span>'+
+ (c.difficulty==="Challenge"?badge("Challenge","amber"):c.isIntegrated?badge("Integrated case","blue"):badge("Clinical cluster","blue"))+'</div>'+
+ '<h2>'+esc(c.title)+'</h2>'+
+ '<details class="flow-scenario" open><summary>Patient scenario <span>Toggle details</span></summary><p>'+esc(c.scenario)+'</p></details>'+
+ '<div class="flow-question-header"><span>QUESTION '+(item.questionIndex+1)+' OF '+c.questions.length+'</span>'+
+ badge(q.type==="VSAQ"?"Very short answer":q.isData?"Data interpretation":"Single best answer","blue")+'</div>'+
+ '<h3>'+esc(q.q)+'</h3>'+options+flowFeedback(c,q,record,paper)+
+ (record&&q.type==="VSAQ"&&!record.selfReviewed?'<p class="flow-gate">Compare the model answer and self-mark to continue.</p>':"")+
+ '<div class="flow-navigation"><button class="btn" data-action="flow-prev" data-paper="'+esc(paper)+'" '+(!prev?"disabled":"")+'>← Previous</button>'+
+ '<button class="btn btn-primary flow-next" data-action="flow-next" data-paper="'+esc(paper)+'" '+(!canGo?"disabled":"")+'>'+
+ (canGo?esc(nextLabel):q.type==="SBA"?"Select an answer to continue":"Check and mark to continue")+'</button></div>'+
+ (record?'<div class="flow-followup"><a href="'+noteHash(c.coreNames[0]||"")+'">Review the relevant core note ↗</a>'+
+ '<button class="btn btn-sm" data-action="flow-retry-question" data-paper="'+esc(paper)+'">Try this question again</button>'+
+ '<button class="btn btn-soft btn-sm" data-action="ask-ai" data-case="'+c.id+'" data-index="'+item.questionIndex+'">✦ Ask AI tutor</button></div>':"")+
+ '</article><div class="flow-bottom-links"><span>One tap advances to the next question or case—no returning to the case bank.</span>'+
+ '<a href="#flow">Switch paper</a></div></div>';
+}
+function renderFlowFinish(paper,pack,sess){
+ const progress=flowCounts(paper),wrong=pack.items.map((item,i)=>({item,i,a:sess.answers[flowItemKey(item)]})).filter(x=>x.a?.correct===false);
+ const byCore=new Map();for(const w of wrong){const name=w.item.c.coreNames[0]||w.item.subject;
+  byCore.set(name,(byCore.get(name)||0)+1)}
+ const review=wrong.slice(0,25).map(({item,i})=>'<button class="flow-review-line" data-action="flow-jump" data-paper="'+esc(paper)+'" data-index="'+i+'"><span>✕</span>'+
+  '<span><strong>'+esc(item.c.title)+'</strong><small>Question '+(item.questionIndex+1)+' · '+esc(item.subject)+'</small></span><span>Review →</span></button>').join("");
+ $("view").innerHTML=head("CONTINUOUS PRACTICE","You've completed "+paper,"All questions in this revision flow have been displayed. Review your weak areas, or restart when you want a fresh attempt.","")+
+ '<div class="flow-finish-stats"><div><strong>'+progress.total+'</strong><span>Questions in this paper flow</span></div>'+
+ '<div><strong>'+progress.correct+' / '+progress.graded+'</strong><span>Correct / graded</span></div>'+
+ '<div><strong>'+progress.percent+'%</strong><span>Practice accuracy</span></div>'+
+ '<div><strong>'+wrong.length+'</strong><span>To review</span></div></div>'+
+ '<div class="flow-finish-actions"><button class="btn btn-primary" data-action="flow-restart" data-paper="'+esc(paper)+'">Start a new attempt →</button>'+
+ '<a class="btn" href="#flow">Choose the other paper</a></div>'+
+ (review?'<section class="flow-mistakes"><h2>Go back over your mistakes</h2><p>Review the explanation, then retry the question.</p>'+review+'</section>':
+ '<div class="flow-intro">No incorrect graded answers are currently recorded for this attempt.</div>');
+}
+function flowCurrent(paper){
+ const pack=FLOW_QUEUES.get(paper),sess=flowGetSession(paper);
+ return pack&&sess&&sess.index<pack.items.length?{pack,sess,item:pack.items[sess.index]}:null;
+}
+function flowAdvance(paper,delta){
+ const current=flowCurrent(paper);
+ if(!current)return;
+ const {pack,sess,item}=current;
+ if(delta>0&&!flowCanContinue(item,sess)){toast("Answer and review the question first");return}
+ sess.index=Math.max(0,Math.min(pack.items.length,sess.index+delta));
+ sess.finished=sess.index===pack.items.length;
+ sess.updated=Date.now();save();render();
+ if(typeof window.scrollTo==="function")window.scrollTo({top:0,behavior:"auto"});
+}
+function flowRecordAnswer(paper,answer,isVsaq=false){
+ const current=flowCurrent(paper);if(!current)return;
+ const {sess,item}=current,key=flowItemKey(item);
+ if(sess.answers[key])return;
+ const correct=isVsaq?null:answer===item.q.answer;
+ sess.answers[key]={answer,correct,time:Date.now(),selfReviewed:!isVsaq};
+ if(!isVsaq)state.practiceHistory.push({caseId:item.c.id,question:item.q.number,answer,correct,paper,source:"continuous",time:Date.now()});
+ sess.updated=Date.now();save();render();
+ if(typeof requestAnimationFrame==="function")requestAnimationFrame(()=>$("answer-feedback")?.scrollIntoView({behavior:"smooth",block:"nearest"}));
+}
+
 function renderCase(id,idx){
  const c=CASES.find(x=>String(x.id)===String(id));if(!c){goto("#practice");return}
  idx=Math.max(0,Math.min(c.questions.length-1,Number(idx)||0));const q=c.questions[idx],key=qrKey(c,q),saved=state.caseAnswers[key],flag=state.flags[key];
@@ -350,12 +522,13 @@ function renderLectures(){
  '<div class="toolbar"><label class="search-field"><span>⌕</span><input id="lectures-search" type="search" aria-label="Search lectures" placeholder="Find lecture titles…" value="'+esc(searchText)+'"></label><select id="lecture-module" class="select" aria-label="Select lecture module">'+choices.map(x=>'<option value="'+esc(x)+'" '+(x===filterLectures?"selected":"")+'>'+esc(x)+'</option>').join("")+'</select></div><p class="tiny-note">'+slides.length+' lecture references shown</p><div class="lectures-list">'+slides.map(s=>'<a class="lecture-item" href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer"><span>▥</span><div><b>'+esc(s.name)+'</b><small>'+esc(s.module)+'</small></div><span>↗</span></a>').join("")+'</div>';
 }
 const Flash=window.createMuaazFlashcards({notes:EYE_NOTES,studyGroups:window.MED_PAPER_GROUPS,getState:()=>state,save,goto,view:()=>$("view"),esc,norm,badge,toast,render});
-function render(){clearInterval(currentTimer);let r=decodeURIComponent(location.hash.replace(/^#/,"")||"home").split("/");let page=r[0]||"home";if(!["home","notes","note","cases","practice","case","mocks","mock","result","leaderboard","lectures","flashcards","study"].includes(page))page="home";setCrumb(page);setIdentity();
+function render(){clearInterval(currentTimer);let r=decodeURIComponent(location.hash.replace(/^#/,"")||"home").split("/");let page=r[0]||"home";if(!["home","notes","note","cases","practice","flow","case","mocks","mock","result","leaderboard","lectures","flashcards","study"].includes(page))page="home";setCrumb(page);setIdentity();
  try{
   if(page==="home")renderHome();
   else if(page==="notes")renderNotes();
   else if(page==="note")renderDetail(r.slice(1).join("/"));
   else if(page==="cases"||page==="practice")renderCases();
+  else if(page==="flow"){if(r[1])renderFlow(r.slice(1).join("/"));else renderFlowLanding()}
   else if(page==="case")renderCase(r[1],r[2]);
   else if(page==="mocks"){goto("#practice");return}
   else if(page==="mock"){goto("#practice");return}
@@ -419,6 +592,37 @@ document.addEventListener("click",e=>{
  if(action==="back-cases"){goto("#practice");return}
  if(action==="back-mocks"){goto("#mocks");return}
  if(action==="quick-check"){const note=EYE_NOTES.find(n=>n.name===el.dataset.name);if(!note)return;const answer=($("quick-answer")?.value||"").trim();if(!answer){toast("Type 1–3 words");return}const correct=norm(answer)===norm(note.answer)||norm(answer).includes(norm(note.answer));state.quickChecks[note.name]={answer,correct};save();render();return}
+
+ if(action==="flow-start"){const paper=el.dataset.paper;if(!FLOW_QUEUES.has(paper))return;flowGetSession(paper);goto("#flow/"+encodeURIComponent(paper));return}
+ if(action==="flow-restart"){const paper=el.dataset.paper;if(!FLOW_QUEUES.has(paper))return;
+   if(!confirm("Restart "+paper+" continuous practice? This resets its current flow answers and position but keeps your individual case work."))return;
+   state.flowSessions[paper]={index:0,answers:{},started:Date.now(),updated:Date.now(),finished:false};save();goto("#flow/"+encodeURIComponent(paper));return}
+ if(action==="flow-next"){flowAdvance(el.dataset.paper,1);return}
+ if(action==="flow-prev"){flowAdvance(el.dataset.paper,-1);return}
+ if(action==="flow-answer"){const paper=el.dataset.paper,current=flowCurrent(paper);
+   if(!current||current.item.q.type!=="SBA")return;
+   if(!"ABCD".includes(el.dataset.letter))return;
+   flowRecordAnswer(paper,el.dataset.letter);return}
+ if(action==="flow-submit-vsaq"){const paper=el.dataset.paper,current=flowCurrent(paper);
+   if(!current||current.item.q.type!=="VSAQ")return;
+   const answer=($("flow-free")?.value||"").trim();
+   if(!answer){toast("Type your answer or choose Reveal");return}
+   flowRecordAnswer(paper,answer,true);return}
+ if(action==="flow-reveal-vsaq"){const paper=el.dataset.paper,current=flowCurrent(paper);
+   if(!current||current.item.q.type!=="VSAQ")return;
+   flowRecordAnswer(paper,"—",true);return}
+ if(action==="flow-mark-vsaq"){const paper=el.dataset.flowPaper,current=flowCurrent(paper);
+   if(!current||current.item.q.type!=="VSAQ")return;
+   const key=flowItemKey(current.item),record=current.sess.answers[key];
+   if(!record)return;
+   if(!record.selfReviewed)state.practiceHistory.push({caseId:current.item.c.id,question:current.item.q.number,answer:record.answer,
+    correct:el.dataset.correct==="1",paper,source:"continuous",time:Date.now()});
+   record.correct=el.dataset.correct==="1";record.selfReviewed=true;current.sess.updated=Date.now();save();render();return}
+ if(action==="flow-retry-question"){const paper=el.dataset.paper,current=flowCurrent(paper);if(!current)return;
+   delete current.sess.answers[flowItemKey(current.item)];current.sess.finished=false;save();render();return}
+ if(action==="flow-jump"){const paper=el.dataset.paper,pack=FLOW_QUEUES.get(paper),sess=flowGetSession(paper),idx=Number(el.dataset.index);
+   if(!pack||!sess||!Number.isInteger(idx)||idx<0||idx>=pack.items.length)return;
+   sess.index=idx;sess.finished=false;save();goto("#flow/"+encodeURIComponent(paper));return}
  if(action==="answer-case"){const c=CASES.find(x=>String(x.id)===el.dataset.case),q=c?.questions[Number(el.dataset.index)];if(!q||state.caseAnswers[qrKey(c,q)])return;const correct=el.dataset.letter===q.answer;state.caseAnswers[qrKey(c,q)]={answer:el.dataset.letter,correct,time:Date.now()};state.practiceHistory.push({caseId:c.id,question:q.number,correct,answer:el.dataset.letter,time:Date.now()});save();render();if(typeof requestAnimationFrame==="function")requestAnimationFrame(()=>document.getElementById("answer-feedback")?.scrollIntoView({behavior:"smooth",block:"nearest"}));return}
  if(action==="answer-vsaq"){const c=CASES.find(x=>String(x.id)===el.dataset.case),q=c?.questions[Number(el.dataset.index)];if(!q||state.caseAnswers[qrKey(c,q)])return;const answer=($("case-free")?.value||"").trim();if(!answer){toast("Type a short answer");return}state.caseAnswers[qrKey(c,q)]={answer,correct:null,time:Date.now(),selfReviewed:false};save();render();if(typeof requestAnimationFrame==="function")requestAnimationFrame(()=>document.getElementById("answer-feedback")?.scrollIntoView({behavior:"smooth",block:"nearest"}));return}
  if(action==="mark-practice-vsaq"){const c=CASES.find(x=>String(x.id)===el.dataset.case),q=c?.questions.find(x=>String(x.number)===el.dataset.number);if(!q)return;const a=state.caseAnswers[qrKey(c,q)];if(!a)return;a.correct=el.dataset.correct==="1";a.selfReviewed=true;state.practiceHistory.push({caseId:c.id,question:q.number,correct:a.correct,answer:a.answer,time:Date.now()});save();render();return}
@@ -455,7 +659,22 @@ document.addEventListener("change",e=>{if(Flash.handleChange(e.target))return;if
  if(e.target.id==="cases-paper"){casePaper=e.target.value;caseSubject="All";renderCases()}
  if(e.target.id==="cases-subject"){caseSubject=e.target.value;renderCases()}});
 window.addEventListener("hashchange",()=>{searchText="";$("sidebar")?.classList.remove("open");window.scrollTo({top:0,behavior:"auto"});render()});
-window.addEventListener("keydown",e=>{if(Flash.handleKey(e))return;if(e.key==="Escape")closeModal()});
+window.addEventListener("keydown",e=>{
+ if(Flash.handleKey(e))return;
+ const tag=e.target?.tagName;
+ if(location.hash.startsWith("#flow/")&&!["INPUT","TEXTAREA","SELECT"].includes(tag)&&!e.altKey&&!e.ctrlKey&&!e.metaKey){
+  const paper=decodeURIComponent(location.hash.slice(6)),current=flowCurrent(paper);
+  if(current){
+   if(current.item.q.type==="SBA"&&["1","2","3","4"].includes(e.key)&&!current.sess.answers[flowItemKey(current.item)]){
+    e.preventDefault();flowRecordAnswer(paper,"ABCD"[Number(e.key)-1]);return;
+   }
+   if((e.key==="Enter"||e.key==="ArrowRight")&&flowCanContinue(current.item,current.sess)){
+    e.preventDefault();flowAdvance(paper,1);return;
+   }
+  }
+ }
+ if(e.key==="Escape")closeModal();
+});
 window.addEventListener("beforeunload",()=>{clearInterval(currentTimer)});
 if(EYE_NOTES.length!==66||CASES.length!==219||totalQuestions!==1877||SLIDES.length!==72||Flash.cards.length!==1254){console.warn("MuaazMed content validation:",{notes:EYE_NOTES.length,cases:CASES.length,questions:totalQuestions,slides:SLIDES.length})}
 if(!location.hash)history.replaceState(null,"","#home");

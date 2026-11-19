@@ -120,3 +120,17 @@ The Flashcards section no longer depends on browser 3D back-face rendering: reve
 - Students continue to see the expected answer, an explanation and option feedback immediately after answering, then can self-review, retry and track mistakes.
 - Answer options are balanced across A/B/C/D; tests checked unique IDs, complete answer sets, missing-condition coverage, VSAQ lengths and basic website interactions.
 - These are independent *Wits-style* questions, **not Wits past-paper questions or faculty-validated difficulty**. Clinical precision needs continued editorial review; do not rely on any single generated question without checking source lectures where uncertain.
+
+## Continuous Practice — Paper 1 and Paper 2
+
+The **EXAM PREP → Continuous Practice** page (`#flow`) offers two independent, untimed and uninterrupted learning streams:
+
+- **Paper 1:** 88 unique clusters / 760 linked questions across BCMH, CVS and Respiratory, including integrated cases connected to that study paper.
+- **Paper 2:** 161 unique clusters / 1,330 linked questions across Renal, GIT, MSK and Haem/Onc, including integrated cases.
+- Total **212 unique site cases represented** across both paper streams; relevant cross-listed cases may appear in both papers, but never twice in the same paper. Seven older unlinked Endocrine, Neuro, Reproductive and Paediatrics extension cases remain in the individual-case practice bank rather than being assigned arbitrarily to the paper split.
+- Answer each SBA to immediately reveal the correct option, teaching explanation and any available distractor rationale. VSAQs reveal the expected answer, then allow self-marking. There is also an **I don't know — reveal** option.
+- A single **Next question / Next case** button automatically loads the next linked question or advances directly to the next clinical vignette. The interface is mobile-friendly and also accepts keyboard `1`–`4` for SBAs and `Enter`/right-arrow to continue when allowed.
+- Paper-specific `flowSessions` are saved with the existing student state and can be resumed independently. Starting a new flow attempt resets only that paper's flow answers, not individual-case results. Attempt history persists for later review.
+- Shows running position, answered count, accuracy, and an end-of-paper review of mistakes; no timer or formal mock-exam submission.
+
+**Academic caveat:** Paper 1 and Paper 2 here are the student's revision groupings, not an official Wits allocation or prediction of examinable conditions. The latest Wits guide explains that the core scope defines what *may* be examined, not the exact content of each exam paper. This is revision software, not a guarantee of a particular result.
