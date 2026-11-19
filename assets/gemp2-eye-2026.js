@@ -167,7 +167,7 @@ function startScreen(){
  el("g-block").addEventListener("change",function(){config.block=this.value;startScreen()});
  el("g-shuffle").addEventListener("change",function(){config.shuffle=this.checked});
  el("g-missed").addEventListener("change",function(){config.missed=this.checked;startScreen()});
- if(el("g-start"))el("g-start").addEventListener("click",function(){var items=buildDeck();if(items.length)beginSession(items,firstUnanswered(items),"continuous")});
+ if(el("g-start"))el("g-start").addEventListener("click",function(){var items=buildDeck();if(items.length)beginSession(items,config.missed?0:firstUnanswered(items),config.missed?"retry":"continuous")});
  if(el("g-resume"))el("g-resume").addEventListener("click",resumeSession);
  if(el("g-all"))el("g-all").addEventListener("click",function(){config.section="all";config.paper="All";config.block="All";config.missed=false;startScreen()});
  Array.from(app.querySelectorAll("[data-cluster]")).forEach(function(btn){btn.addEventListener("click",function(){jumpToGroup(btn.getAttribute("data-cluster"))})});
@@ -232,8 +232,9 @@ function renderQuestion(){
 function finishScreen(){
  finishPosition();
  var n=Object.keys(sessionAnswers).length,k=deck.filter(function(x){return sessionAnswers[x.id]===x.correct}).length;
+ var missing=deck.filter(function(x){return sessionAnswers[x.id]===undefined}).length;
  var missed=deck.filter(function(x){return sessionAnswers[x.id]!==x.correct});
- app.innerHTML='<div class="g-finish"><div class="g-eyebrow">SESSION COMPLETE</div><h2>'+k+' / '+n+' correct</h2><p>You completed '+n+' question'+(n===1?"":"s")+'. Every result is stored on this device for missed-question revision. Review the '+missed.length+' incorrect question'+(missed.length===1?"":"s")+' to improve clinical reasoning.</p><div class="g-actions"><button class="g-btn primary" id="g-back">Change filters / practise again</button>'+(missed.length?'<button class="g-btn" id="g-redo">Redo missed from this session</button>':'')+'</div></div>';
+ app.innerHTML='<div class="g-finish"><div class="g-eyebrow">SESSION COMPLETE</div><h2>'+k+' / '+n+' correct</h2><p>You completed '+n+' question'+(n===1?"":"s")+'. Answers are saved on this browser for tomorrow. You have '+(n-k)+' incorrect and '+missing+' unanswered in this session. Review them to improve clinical reasoning.</p><div class="g-actions"><button class="g-btn primary" id="g-back">Change filters / practise again</button>'+(missed.length?'<button class="g-btn" id="g-redo">Retry incorrect / unanswered</button>':'')+'</div></div>';
  el("g-back").addEventListener("click",startScreen);
  if(el("g-redo"))el("g-redo").addEventListener("click",function(){beginSession(missed,0,"retry")});
 }
