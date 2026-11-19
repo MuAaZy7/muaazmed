@@ -2,6 +2,10 @@
 
 An independent Wits GEMP1 end-of-year revision platform on GitHub Pages.
 
+## GEMP2 EYE 2026 student-recalled paper section
+
+The [GEMP2 EYE 2026 practice page](gemp2-eye-2026.html) presents 95 reviewed or newly constructed four-option practice questions derived from the student's uploaded nine-page recall workbook. It separates six source sections, including the two final end-year integrated case sections on source pages 8 and 9. The existing user's study split is preserved: Paper 1 = BCMH/CVS/Respiratory; Paper 2 = Renal/GIT/MSK/Haem-Onc, with other GEMP2 topics in a separate group. Every option has an authored why-right/why-wrong explanation; questions are answered continuously with optional randomised case clusters and browser-local progress. Some material is abbreviated recollection, not verified official exam wording: section 6 includes original topic-only practice where the workbook supplied only case headings. This page is not an official Wits paper or an assurance of likely exam questions.
+
 ## Included and working for guests
 
 - 66 conditions verified from the **red-coloured text** in the user-supplied Wits core list (pp. 5–7).
