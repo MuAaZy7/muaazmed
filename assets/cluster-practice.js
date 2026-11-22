@@ -73,7 +73,7 @@ function play(){
 }
 function render(){if(!root)return;if(db.view==="play")play();else landing();}
 root.addEventListener("click",e=>{const target=e.target.closest("[data-act]");if(!target)return;const act=target.dataset.act;e.preventDefault();
- if(act==="paper"){db.active=target.dataset.paper;db.view="landing";db.showAll=false;save();render();}
+ if(act==="paper"){db.active=target.dataset.paper;db.view="landing";db.showAll=false;if(window.history?.replaceState&&window.location){const params=new URLSearchParams(window.location.search);params.set("paper",db.active);window.history.replaceState(null,"",window.location.pathname+"?"+params.toString());}save();render();}
  if(act==="start"){db.view="play";makeSession(target.dataset.random==="yes"?true:db.randomize);}
  if(act==="continue"){db.view="play";save();render();}
  if(act==="home"){db.view="landing";save();render();}
