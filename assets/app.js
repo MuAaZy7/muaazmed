@@ -24,7 +24,7 @@ for(const p of PAPER_GROUPS)for(const s of p.subjects)for(const name of s.condit
  tags.push({paper:p.paper,subject:s.name});STUDY_TAGS.set(key,tags);
 }
 function tagsFor(name){return STUDY_TAGS.get(String(name||"").toLowerCase())||[]}
-function caseTags(c){const unique=new Map();for(const name of c.coreNames||[])for(const tag of tagsFor(name))unique.set(tag.paper+"|"+tag.subject,tag);return [...unique.values()]}
+function caseTags(c){const unique=new Map();for(const name of c.coreNames||[])for(const tag of tagsFor(name))if(!c.paper2Only||tag.paper==="Paper 2")unique.set(tag.paper+"|"+tag.subject,tag);return [...unique.values()]}
 function subjectOptions(paper){return PAPER_GROUPS.filter(p=>paper==="All"||p.paper===paper).flatMap(p=>p.subjects.map(s=>s.name)).filter((s,i,a)=>a.indexOf(s)===i)}
 function selectOptions(paper,subject,subjectOnly=false){
  const all=subjectOnly?'<option value="All">All subjects</option>':'<option value="All">Both study papers</option>';
@@ -202,7 +202,7 @@ function renderCases(){
    if(caseSubject!=="All"&&caseSubject!==subject.name)continue;
    const conditionBlocks=[];
    for(const name of subject.conditions){
-    const linked=ordinary.filter(c=>c.coreNames.some(x=>norm(x)===norm(name))).sort((a,b)=>(b.difficulty==="Challenge")-(a.difficulty==="Challenge")||(a.id||0)-(b.id||0));
+    const linked=ordinary.filter(c=>(!c.paper2Only||paper.paper==="Paper 2")&&c.coreNames.some(x=>norm(x)===norm(name))).sort((a,b)=>(b.difficulty==="Challenge")-(a.difficulty==="Challenge")||(a.id||0)-(b.id||0));
     if(!linked.length)continue;
     conditionBlocks.push('<details class="practice-condition"'+(caseSubject!=="All"?' open':'')+'><summary><span>'+esc(name)+'</span><span>'+linked.length+' cases <span class="practice-caret">⌄</span></span></summary><div class="practice-case-list">'+linked.map(practiceCaseCard).join("")+'</div></details>');
    }
@@ -248,7 +248,7 @@ function buildFlowQueues(){
   }
   for(const s of p.subjects){
    for(const name of s.conditions){
-    const linked=CASES.filter(c=>!c.isIntegrated&&c.coreNames.some(x=>norm(x)===norm(name)))
+    const linked=CASES.filter(c=>!c.expansion&&!c.isIntegrated&&c.coreNames.some(x=>norm(x)===norm(name)))
       .sort((a,b)=>(a.difficulty==="Challenge")-(b.difficulty==="Challenge")||(a.id||0)-(b.id||0));
     linked.forEach(c=>add(c,s.name));
    }
@@ -259,6 +259,8 @@ function buildFlowQueues(){
   /* Integrated cases appear after the core-system practice for each relevant paper. */
   CASES.filter(c=>c.isIntegrated&&caseTags(c).some(t=>t.paper===p.paper))
     .sort((a,b)=>(a.id||0)-(b.id||0)).forEach(c=>add(c,"Integrated"));
+  // Append new Paper 2 cases so previous continuous-flow indexes remain stable.
+  if(p.paper==="Paper 2")for(const c of CASES.filter(c=>c.expansion)){const subject=p.subjects.find(s=>s.conditions.some(n=>c.coreNames.some(x=>norm(x)===norm(n))))?.name||"Integrated";add(c,subject);}
   const items=[];
   ordered.forEach((item,ci)=>item.c.questions.forEach((q,qi)=>items.push({
    c:item.c,q,subject:item.subject,caseIndex:ci,questionIndex:qi

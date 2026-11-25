@@ -122,6 +122,6 @@ window.addEventListener("keydown",e=>{
  }
 });
 document.querySelectorAll("[data-cp-mobile-menu]").forEach(b=>b.addEventListener("click",()=>document.querySelector(".sidebar")?.classList.toggle("cp-open")));
-if(requestedId){const index=pool[db.active].findIndex(c=>c.id==="site-"+requestedId);if(index>=0){const order=filtered().map(x=>x.i);const pos=order.indexOf(index);if(pos>=0){db.sessions[sessionKey()]={order,pos,q:0,answers:{},finished:false,created:Date.now(),randomize:false};db.view="play";save();}}if(window.history?.replaceState){params.delete("cluster");params.delete("condition");window.history.replaceState(null,"",location.pathname+"?"+params.toString());}}
+if(requestedId){const index=pool[db.active].findIndex(c=>c.id==="site-"+requestedId);if(index>=0){const order=filtered().map(x=>x.i);const pos=order.indexOf(index);if(pos>=0){db.sessions[sessionKey()]={order,pos,q:0,answers:{},finished:false,created:Date.now(),randomize:false};db.view="play";save();}}if(window.history?.replaceState){params.delete("cluster");params.delete("condition");params.delete("bank");window.history.replaceState(null,"",location.pathname+"?"+params.toString());}}
 render();
 })();
