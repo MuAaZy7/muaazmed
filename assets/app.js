@@ -157,9 +157,9 @@ function renderDetail(name){
   section("⌕","Investigations and interpretation",n.tests,""),
   section("!","Danger signs & safest next step",n.safety,"warning"),
   section("⇄","Differentiate from common mimics",n.differentiate,""),
-  section("★","Exam memory hook",n.memory,"ok")
+  section("★","Exam memory hook",n.memory,"ok")+(n.sprintPearl?section("★","Paper 2 exam pearls · buzzwords & drug / bedside focus",n.sprintPearl.pearl+" "+n.sprintPearl.focus,"ok")+section("◈","Rapid VSAQ",n.sprintPearl.vsaq+" — "+n.sprintPearl.answer,"highlight"):"")
  ].join("");
- const links=rels.sort((a,b)=>(b.difficulty==="Challenge")-(a.difficulty==="Challenge")||(a.id||0)-(b.id||0)).map((c,i)=>'<div class="linked-case"><span>◈</span><strong>Case '+(i+1)+': '+esc(c.title)+(c.difficulty==="Challenge"?" · HARD":"")+'</strong><a href="'+caseHash(c.id)+'">Practise ↗</a></div>').join("")||'<p class="tiny-note">A full case cluster is being prepared for this condition. Start with its VSAQ and use the clinical case bank for integrated practice.</p>';
+ const links=(n.sprintPearl?'<p><a class="btn btn-primary btn-wide" href="cluster-practice.html?paper=Paper%202&amp;condition='+encodeURIComponent(n.name)+'&amp;cluster='+n.sprintPearl.clusterId+'">Start high-yield cluster →</a></p>':"")+ (rels.sort((a,b)=>(b.difficulty==="Challenge")-(a.difficulty==="Challenge")||(a.id||0)-(b.id||0)).map((c,i)=>'<div class="linked-case"><span>◈</span><strong>Case '+(i+1)+': '+esc(c.title)+(c.difficulty==="Challenge"?" · HARD":"")+'</strong><a href="'+caseHash(c.id)+'">Practise ↗</a></div>').join("")||'<p class="tiny-note">A full case cluster is being prepared for this condition. Start with its VSAQ and use the clinical case bank for integrated practice.</p>');
  const lectures=slides.map(s=>'<div class="linked-case"><span>▥</span><strong>'+esc(s.name)+'</strong><a href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer">Slides ↗</a></div>').join("")||'<p class="tiny-note">Browse the lecture library to find supporting course material.</p>';
  $("view").innerHTML='<div class="detail-layout"><div class="detail-main"><button class="back-link" data-action="back-notes">← Back to core conditions</button><div class="detail-hero"><div class="detail-top">'+badge("GEMP1 red-listed","red")+labelsFor(n.name)+(learned?badge("Revised ✓","green"):"")+'</div><h1>'+esc(n.name)+'</h1><p>'+esc(n.presentation)+'</p><div class="page-actions"><button class="btn '+(learned?"btn-success":"btn-primary")+'" data-action="learn" data-name="'+esc(n.name)+'">'+(learned?"✓ Marked as revised":"+ Mark as revised")+'</button><button class="btn" data-action="save" data-name="'+esc(n.name)+'">'+(saved?"★ Saved":"☆ Save note")+'</button><button class="btn btn-soft" data-action="flash-start" data-scope="condition:'+esc(n.name)+'" data-mode="All" data-limit="0">◈ Deep flashcards</button></div></div>'+sections+'<div class="notice">Study rule: be able to recognise the presentation, explain the underlying mechanism, interpret basic investigations and state the safest supervised action. These summaries are revision aids, not a replacement for your original Wits teaching material.</div></div><aside class="detail-aside"><section class="aside-box"><div class="overline">ACTIVE RECALL · FLASHCARDS</div><h3>'+Flash.statsFor(n.name).total+' cards for this condition</h3><p>Clinical recognition, mechanisms, tests, clinical data, red flags, mimics and multiple VSAQs.</p><div class="progress-meta"><span>Mastered</span><b>'+Flash.statsFor(n.name).mastered+' / '+Flash.statsFor(n.name).total+'</b></div><div class="progress-track"><span style="width:'+(Flash.statsFor(n.name).mastered/Math.max(1,Flash.statsFor(n.name).total)*100)+'%"></span></div><button class="btn btn-primary btn-wide" style="margin-top:14px" data-action="flash-start" data-scope="condition:'+esc(n.name)+'" data-mode="All" data-limit="0">Study all flashcards →</button><p class="tiny-note" style="margin-top:10px">Flip the card and rate your recall to schedule future reviews. No fixed card cap.</p></section><section class="aside-box"><h3>Linked case practice</h3>'+links+'</section><section class="aside-box"><h3>Related Wits lectures</h3>'+lectures+'</section></aside></div>';
 }
@@ -212,7 +212,7 @@ function renderCases(){
  }
  $("view").innerHTML=head("PRACTICE QUESTIONS","Learn from every answer","Choose a subject or a core condition. Answer an SBA to reveal the correct option and its explanation straight away. VSAQs show the expected short answer for self-review.","")+
  '<div class="practice-intro"><strong>EYE1 PRACTICE TESTS — THREE COMPLETE PAPERS:</strong> 48 clinical clusters, 360 questions, immediate SBA/VSAQ feedback, case randomisation and skip-case controls. <a href="cluster-practice.html?paper=EYE1%20Paper%201" style="font-weight:850;color:#3455a5">Open EYE1 practice papers →</a></div>'+
- '<div class="practice-intro"><strong>NEW — Blind Case Cluster Practice:</strong> Paper 1 and Paper 2, immediate explanations and a randomise-clusters option. <a href="cluster-practice.html" style="font-weight:850;color:#3455a5">Open case clusters →</a></div>'+
+ '<div class="practice-intro"><strong>Paper 2 exam sprint:</strong> 49 condition clusters, immediate feedback, targeted drug classes, mechanisms and vertical themes. <a href="cluster-practice.html?paper=Paper%202&amp;bank=sprint" style="font-weight:850;color:#3455a5">Start Paper 2 →</a> · <a href="cluster-practice.html?paper=Paper%202&amp;bank=mockA">Mock A study</a> · <a href="cluster-practice.html?paper=Paper%202&amp;bank=mockB">Mock B study</a> · <a href="cluster-practice.html?paper=Paper%201">Paper 1 →</a></div>'+
  '<div class="practice-intro">Built around the GEMP1 integrated-assessment examples: one clinical presentation followed by mechanisms, discriminating findings, investigations, data and safe actions. These are original/student-derived questions, not an official Wits examination. Challenge cases use close differential diagnoses and lab interpretation. Study-paper headings are for revision, not guaranteed exam allocation.</div>'+
  '<div class="practice-summary-grid"><div><strong>'+CASES.length+'</strong><span>Total clinical clusters</span></div><div><strong>'+totalQuestions+'</strong><span>Practice questions</span></div><div><strong>'+questionStats().percent+'%</strong><span>Your answer accuracy</span></div><div><strong>'+Object.values(state.caseAnswers).filter(x=>!x.correct).length+'</strong><span>Answers to review</span></div></div>'+
  '<div class="study-filter-toolbar"><label class="search-field"><span>⌕</span><input id="cases-search" type="search" aria-label="Search question practice" placeholder="Search disease, clinical presentation or mechanism…" value="'+esc(searchText)+'"></label>'+
@@ -230,7 +230,7 @@ function practiceFeedback(c,q,saved){
  const mark=pending?'<span class="practice-status">Compare and self-mark</span>':saved.correct?'<span class="practice-status correct">✓ Correct</span>':'<span class="practice-status incorrect">✕ Not quite — review</span>';
  const choice=q.type==="SBA"?'<p><b>Your choice:</b> '+esc(saved.answer)+'. '+esc(q.options["ABCD".indexOf(saved.answer)]||"")+'</p>':'<p><b>Your answer:</b> '+esc(saved.answer)+'</p>';
  const selectedIndex="ABCD".indexOf(saved.answer),wrongReason=q.type==="SBA"&&!saved.correct&&Array.isArray(q.whyOptions)&&q.whyOptions[selectedIndex]?'<p><b>Why your choice was less suitable:</b> '+esc(q.whyOptions[selectedIndex])+'</p>':"";
- const allOptions=q.type==="SBA"&&Array.isArray(q.whyOptions)&&q.whyOptions.length===4?'<details class="practice-why"><summary>Why each option is right or wrong</summary><div>'+q.whyOptions.map((r,i)=>'<p><b>'+String.fromCharCode(65+i)+'.</b> '+esc(r)+'</p>').join("")+'</div></details>':"";
+ const allOptions=q.type==="SBA"&&Array.isArray(q.whyOptions)&&q.whyOptions.length===4?'<details class="practice-why" open><summary>Why each option is right or wrong</summary><div>'+q.whyOptions.map((r,i)=>'<p><b>'+String.fromCharCode(65+i)+'.</b> '+esc(r)+'</p>').join("")+'</div></details>':"";
  const self=q.type==="VSAQ"?'<div class="practice-self-check"><span>'+(saved.selfReviewed?'Self-marked '+(saved.correct?'correct':'for revision')+'. Change if necessary:':'Did your answer match the expected meaning?')+'</span><button class="btn btn-sm" data-action="mark-practice-vsaq" data-correct="1" data-case="'+c.id+'" data-number="'+q.number+'">✓ I got it</button><button class="btn btn-sm" data-action="mark-practice-vsaq" data-correct="0" data-case="'+c.id+'" data-number="'+q.number+'">Needs revision</button></div>':"";
  return '<section class="practice-answer-feedback '+(pending?"pending":saved.correct?"correct":"incorrect")+'" id="answer-feedback" tabindex="-1">'+mark+choice+'<div class="practice-correct-answer"><small>EXPECTED ANSWER</small><strong>'+esc(correctText)+'</strong></div><p><b>Reasoning:</b> '+esc(q.explain||q.point||"Review this concept in the relevant core note.")+'</p>'+wrongReason+allOptions+self+'</section>';
 }
@@ -304,7 +304,7 @@ function flowPaperCard(p){
 function renderFlowLanding(){
  $("view").innerHTML=head("CONTINUOUS PRACTICE","Keep going. One case after another.","Work through linked clinical case questions without returning to the case library. Choose Paper 1 or Paper 2; every answer reveals its explanation immediately.","")+
  '<div class="flow-intro"><strong>How it works:</strong> Choose a paper, answer, read the explanation, then press <b>Next</b>. At the last question of a case, Next opens the following case automatically. You can leave and resume without losing your place. No timer and no compulsory submission.</div>'+
- '<div class="flow-paper-grid">'+PAPER_GROUPS.map(flowPaperCard).join("")+'</div>'+
+ '<div class="notice"><a class="btn btn-primary" href="cluster-practice.html?paper=Paper%202&amp;bank=sprint">Filtered continuous study · Paper 2 →</a> <a class="btn" href="cluster-practice.html?paper=Paper%201">Paper 1 →</a></div><div class="flow-paper-grid">'+PAPER_GROUPS.map(flowPaperCard).join("")+'</div>'+
  '<p class="flow-qualifier">The Paper 1 / Paper 2 subject split is a student revision organisation, not an official Wits promise about what will appear on either paper. Seven older extension cases without a suitable subject mapping remain in individual-case practice.</p>'+
  '<a class="btn btn-soft" href="#practice">Browse individual cases instead ↗</a>';
 }
@@ -349,14 +349,14 @@ function renderFlow(paper){
  '<div class="flow-progress-track"><span style="width:'+pct+'%"></span></div></div>'+
  '<article class="flow-study-card"><div class="flow-scenario-header"><span class="overline">'+esc(paper)+' / '+esc(item.subject)+' · CASE '+(item.caseIndex+1)+'</span>'+
  (c.difficulty==="Challenge"?badge("Challenge","amber"):c.isIntegrated?badge("Integrated case","blue"):badge("Clinical cluster","blue"))+'</div>'+
- '<h2>'+esc(c.title)+'</h2>'+
+ '<details><summary>Reveal cluster title</summary><h2>'+esc(c.title)+'</h2></details>'+
  '<details class="flow-scenario" open><summary>Patient scenario <span>Toggle details</span></summary><p>'+esc(c.scenario)+'</p></details>'+
  '<div class="flow-question-header"><span>QUESTION '+(item.questionIndex+1)+' OF '+c.questions.length+'</span>'+
  badge(q.type==="VSAQ"?"Very short answer":q.isData?"Data interpretation":"Single best answer","blue")+'</div>'+
  '<h3>'+esc(q.q)+'</h3>'+options+flowFeedback(c,q,record,paper)+
  (record&&q.type==="VSAQ"&&!record.selfReviewed?'<p class="flow-gate">Compare the model answer and self-mark to continue.</p>':"")+
  '<div class="flow-navigation"><button class="btn" data-action="flow-prev" data-paper="'+esc(paper)+'" '+(!prev?"disabled":"")+'>← Previous</button>'+
- '<button class="btn btn-primary flow-next" data-action="flow-next" data-paper="'+esc(paper)+'" '+(!canGo?"disabled":"")+'>'+
+ '<button class="btn" data-action="flow-skip" data-paper="'+esc(paper)+'">Skip cluster ↷</button><button class="btn btn-primary flow-next" data-action="flow-next" data-paper="'+esc(paper)+'" '+(!canGo?"disabled":"")+'>'+
  (canGo?esc(nextLabel):q.type==="SBA"?"Select an answer to continue":"Check and mark to continue")+'</button></div>'+
  (record?'<div class="flow-followup"><a href="'+noteHash(c.coreNames[0]||"")+'">Review the relevant core note ↗</a>'+
  '<button class="btn btn-sm" data-action="flow-retry-question" data-paper="'+esc(paper)+'">Try this question again</button>'+
@@ -416,7 +416,7 @@ function renderCase(id,idx){
  const palette=c.questions.map((x,i)=>{const f=state.caseAnswers[qrKey(c,x)],fl=state.flags[qrKey(c,x)];return '<button class="'+(i===idx?"active ":"")+(f?(f.correct?"answered":"wrong"):"")+(fl?" flagged":"")+'" data-action="case-jump" data-case="'+c.id+'" data-index="'+i+'">'+(i+1)+'</button>'}).join("");
  const stats=practiceCaseStats(c);
  $("view").innerHTML='<div class="case-layout"><div><button class="back-link" data-action="back-cases">← Back to Practice Questions</button>'+
- '<div class="scenario"><div class="overline">INTEGRATED PRACTICE · '+esc(caseLabel(c))+'</div><h2>'+esc(c.title)+'</h2><p>'+esc(c.scenario)+'</p></div>'+
+ '<div class="scenario"><div class="overline">INTEGRATED PRACTICE · '+esc(caseLabel(c))+'</div><details><summary>Reveal cluster title</summary><h2>'+esc(c.title)+'</h2></details><p>'+esc(c.scenario)+'</p></div>'+
  '<div class="question-panel"><div class="q-progress"><span>QUESTION '+(idx+1)+' OF '+c.questions.length+'</span>'+badge(q.type==="VSAQ"?"VSAQ · 1–3 words":q.isData?"Results interpretation":"SBA · 4 options","blue")+'</div><h2>'+esc(q.q)+'</h2>'+
  opts+practiceFeedback(c,q,saved)+
  '<div class="question-foot"><button class="btn btn-sm" data-action="flag" data-key="'+esc(key)+'">'+(flag?"⚑ Flagged":"⚐ Flag to revise")+'</button><div class="page-actions"><button class="btn btn-sm" data-action="case-jump" data-case="'+c.id+'" data-index="'+(idx-1)+'" '+(idx===0?"disabled":"")+'>← Previous</button><button class="btn btn-primary btn-sm" data-action="case-jump" data-case="'+c.id+'" data-index="'+(idx+1)+'" '+(idx===c.questions.length-1?"disabled":"")+'>Next question →</button></div></div>'+
@@ -532,8 +532,8 @@ function render(){clearInterval(currentTimer);let r=decodeURIComponent(location.
   else if(page==="cases"||page==="practice")renderCases();
   else if(page==="flow"){if(r[1])renderFlow(r.slice(1).join("/"));else renderFlowLanding()}
   else if(page==="case")renderCase(r[1],r[2]);
-  else if(page==="mocks"){goto("#practice");return}
-  else if(page==="mock"){goto("#practice");return}
+  else if(page==="mocks"){location.href="cluster-practice.html?paper=Paper%202&bank=mockA";return}
+  else if(page==="mock"){location.href="cluster-practice.html?paper=Paper%202&bank="+(r[1]==="B"?"mockB":"mockA");return}
   else if(page==="result"){goto("#practice");return}
   else if(page==="leaderboard")renderLeaderboard();
   else if(page==="lectures")renderLectures();
@@ -599,6 +599,7 @@ document.addEventListener("click",e=>{
  if(action==="flow-restart"){const paper=el.dataset.paper;if(!FLOW_QUEUES.has(paper))return;
    if(!confirm("Restart "+paper+" continuous practice? This resets its current flow answers and position but keeps your individual case work."))return;
    state.flowSessions[paper]={index:0,answers:{},started:Date.now(),updated:Date.now(),finished:false};save();goto("#flow/"+encodeURIComponent(paper));return}
+ if(action==="flow-skip"){const p=el.dataset.paper,cur=flowCurrent(p),pack=FLOW_QUEUES.get(p);if(cur&&pack){let i=cur.sess.index+1;while(i<pack.items.length&&pack.items[i].c.id===cur.item.c.id)i++;cur.sess.index=i;cur.sess.finished=i===pack.items.length;save();render();}return;}
  if(action==="flow-next"){flowAdvance(el.dataset.paper,1);return}
  if(action==="flow-prev"){flowAdvance(el.dataset.paper,-1);return}
  if(action==="flow-answer"){const paper=el.dataset.paper,current=flowCurrent(paper);
