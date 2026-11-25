@@ -1,7 +1,7 @@
 (function(){
 "use strict";
 const root=document.getElementById("cp-app");
-const STORE="muaazmed-blind-clusters-v1";
+const STORE="muaazmed-blind-clusters-v2";
 const esc=v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const tidy=s=>String(s||"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g," ").trim();
 const papers=window.MED_PAPER_GROUPS?.papers||[];
@@ -9,43 +9,52 @@ const second=papers.find(x=>x.paper==="Paper 2");
 const paper2Names=new Set((second?.subjects||[]).flatMap(s=>s.conditions.map(tidy)));
 const maps={16:["Anaphylaxis","Anaphylactic Shock"],35:["HIV/AIDS","Oral Candidiasis"],2:["Sepsis"],17:["Sepsis"],12:["Cardiac Arrhythmia"],32:["Congestive Cardiac Failure"],1:["Ischaemic Heart Disease"],13:["Pulmonary Embolism"],3:["Shock"],26:["Asthma"],33:["Chronic Obstructive Pulmonary Disease (COPD)"],11:["Pneumonia"],7:["Tuberculosis"],5:["Acute Kidney Injury"],34:["Nephritic syndrome","Nephrotic syndrome"],23:["Renal Calculi"],19:["Liver Cirrhosis","Ascites"],14:["Liver Cirrhosis"],6:["Upper GI Bleed","Peptic Ulcer Disease"],20:["Aplastic Anaemia"],10:["Iron Deficiency Anaemia"],27:["Stroke"]};
 const raw=[...(window.MED_BANK||[]),...(window.MED_EXTRA||[]),...(window.MED_INTEGRATED_CASES||[])];
-const seen=new Set();
-const fromSite=raw.filter(c=>{
-  const names=Array.isArray(c.core)?c.core:(c.core?[c.core]:(maps[c.id]||[c.title]));
-  const suitable=names.some(n=>paper2Names.has(tidy(n)))||(!c.core&&["Renal","GIT","MSK","Haem/Onc"].includes(c.module));
-  if(!suitable||seen.has(String(c.id)))return false;
-  seen.add(String(c.id));return true;
-}).map(c=>({
-  id:"site-"+c.id,scenario:c.scenario||"",source:c.source||"MuaazMed existing practice bank",questions:(c.questions||[]).filter(q=>q&&q.q&&q.answer&&((Array.isArray(q.options)&&q.options.length===4&&/^[ABCD]$/.test(String(q.answer)))||!Array.isArray(q.options)||q.options.length===0)).map((q,i)=>({
-    number:q.number||i+1,q:q.q,type:Array.isArray(q.options)&&q.options.length===4?"SBA":"VSAQ",
-    options:Array.isArray(q.options)&&q.options.length===4?q.options:undefined,answer:String(q.answer),
-    accepted:Array.isArray(q.accepted)?q.accepted:[],explain:q.explain||q.point||"Review the correct answer and clinical reasoning.",
-    whyOptions:q.whyOptions,point:q.point
-  }))
-})).filter(c=>c.scenario&&c.questions.length);
-const pool={"Paper 1":(window.MED_PDF_PAPER1||[]).filter(c=>c.questions?.length),"Paper 2":fromSite,...Object.fromEntries((window.MED_EYE1_PAPERS||[]).map((cases,i)=>["EYE1 Paper "+(i+1),cases]))};
-let db={active:"Paper 1",randomize:false,sessions:{},showAll:false};
-try{const x=JSON.parse(localStorage.getItem(STORE)||"null");if(x&&typeof x==="object")db={...db,...x,sessions:x.sessions||{}};}catch(_){}
-const requestedPaper=new URLSearchParams(location.search).get("paper");if(requestedPaper&&pool[requestedPaper])db.active=requestedPaper;
-if(!pool[db.active])db.active="Paper 1";
+const names=c=>Array.isArray(c.core)?c.core:(c.core?[c.core]:(maps[c.id]||[]));
+function siteFor(p){
+ const allowed=new Set((papers.find(x=>x.paper===p)?.subjects||[]).flatMap(s=>s.conditions.map(tidy))),seen=new Set();
+ return raw.filter(c=>{if(seen.has(String(c.id))||!names(c).some(n=>allowed.has(tidy(n))))return false;seen.add(String(c.id));return true;}).map(c=>({...c,id:"site-"+c.id,core:names(c),questions:(c.questions||[]).filter(q=>q&&q.q&&q.answer&&(q.options?.length===4&&/^[ABCD]$/.test(q.answer)||!q.options?.length)).map((q,i)=>({...q,number:q.number||i+1,type:q.options?.length===4?"SBA":"VSAQ",answer:String(q.answer),accepted:q.accepted||[],explain:q.explain||q.point||"Review the expected answer."}))})).filter(c=>c.scenario&&c.questions.length);
+}
+const p2=siteFor("Paper 2"),sprint=p2.filter(c=>c.sprint);
+const pool={"Paper 1":[...siteFor("Paper 1"),...(window.MED_PDF_PAPER1||[]).filter(c=>c.questions?.length)],"Paper 2":[...sprint,...p2.filter(c=>!c.sprint)],...Object.fromEntries((window.MED_EYE1_PAPERS||[]).map((cases,i)=>["EYE1 Paper "+(i+1),cases]))};
+let db={active:"Paper 2",randomize:false,sessions:{},showAll:false,subject:"All",condition:"All",bank:"sprint",revealed:{},view:"landing"};
+try{const x=JSON.parse(localStorage.getItem(STORE)||"null");if(x&&typeof x==="object")db={...db,...x,sessions:x.sessions||{},revealed:x.revealed||{}};}catch(_){}
+const params=new URLSearchParams(location.search),requestedPaper=params.get("paper");
+if(requestedPaper&&pool[requestedPaper]&&requestedPaper!==db.active){db.active=requestedPaper;db.subject="All";db.condition="All";db.view="landing";}
+if(!pool[db.active])db.active="Paper 2";
+const requestedCondition=params.get("condition");if(requestedCondition){db.condition=requestedCondition;db.subject="All";db.bank="all";db.view="landing";}
+const requestedBank=params.get("bank");if(["sprint","all","mockA","mockB"].includes(requestedBank)){db.bank=requestedBank;db.subject="All";db.condition="All";db.view="landing";}
+const requestedId=params.get("cluster");
+function subjects(){return papers.find(p=>p.paper===db.active)?.subjects||[];}
+function conditions(){return [...new Set(subjects().filter(s=>db.subject==="All"||s.name===db.subject).flatMap(s=>s.conditions))].sort();}
+function filtered(){
+ let list=pool[db.active].map((c,i)=>({c,i}));
+ if(db.active==="Paper 2"){
+   if(db.bank==="sprint")list=list.filter(x=>x.c.sprint);
+   if(db.bank==="mockA"||db.bank==="mockB")list=list.filter(x=>x.c.sprint).filter((_,i)=>i%2===(db.bank==="mockA"?0:1)).slice(0,15);
+ }
+ const allowed=conditions().map(tidy);
+ return list.filter(({c})=>{const tags=(Array.isArray(c.core)?c.core:[]).map(tidy);if(db.condition!=="All")return tags.includes(tidy(db.condition));if(db.subject!=="All")return tags.some(t=>allowed.includes(t))||(!tags.length&&(c.module===db.subject||c.subject===db.subject));return true;});
+}
+function titleOf(c){return (Array.isArray(c.core)&&c.core.length?c.core.join(" / "):c.title)||c.module||c.subject||"Condition not tagged in source";}
+function choiceSelect(id,values,selected){return '<select id="'+id+'" style="padding:8px;max-width:100%;border:1px solid #c9d7e9;border-radius:8px;background:white">'+values.map(([v,label])=>'<option value="'+esc(v)+'" '+(v===selected?"selected":"")+'>'+esc(label)+'</option>').join("")+'</select>';}
 function save(){try{localStorage.setItem(STORE,JSON.stringify(db));}catch(_){}} 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function session(){const x=db.sessions[db.active];return x&&Array.isArray(x.order)&&x.order.length?x:null;}
-function makeSession(randomize=db.randomize){const order=pool[db.active].map((_,i)=>i);if(randomize)shuffle(order);db.sessions[db.active]={order,pos:0,q:0,answers:{},finished:false,created:Date.now(),randomize};db.randomize=randomize;save();render();}
+function makeSession(randomize=db.randomize){const order=filtered().map(x=>x.i);if(!order.length){db.view="landing";render();return;}if(randomize)shuffle(order);db.sessions[db.active]={order,pos:0,q:0,answers:{},finished:false,created:Date.now(),randomize};db.randomize=randomize;save();render();}
 function current(s){const c=pool[db.active][s.order[s.pos]];return {c,q:c?.questions[s.q],key:c?c.id+":"+(s.q):""};}
 function score(s){const a=Object.values(s.answers||{});return {answered:a.length,correct:a.filter(x=>x.correct).length};}
 function totalFor(p){return pool[p].reduce((n,c)=>n+c.questions.length,0);}
 function statCard(p){const s=db.sessions[p],count=pool[p].length,done=s?score(s):{answered:0,correct:0};return '<div class="cp-stat"><strong>'+count+'</strong><span>Case clusters</span></div><div class="cp-stat"><strong>'+totalFor(p)+'</strong><span>Practice questions</span></div><div class="cp-stat"><strong>'+done.answered+'</strong><span>Answered this session</span></div><div class="cp-stat"><strong>'+(done.answered?Math.round(done.correct/done.answered*100)+"%":"—")+'</strong><span>Session accuracy</span></div>';}
 function landing(){
- const p=db.active,s=session(),cases=pool[p],visible=db.showAll?cases:cases.slice(0,42);
+ const p=db.active,s=session(),cases=filtered(),visible=db.showAll?cases:cases.slice(0,42);
  const paperTabs=Object.keys(pool).map(name=>'<button data-act="paper" data-paper="'+esc(name)+'" class="'+(p===name?"selected":"")+'>'+esc(name)+'</button>').join("");
- const paperDescription=p.startsWith("EYE1 Paper")?"Complete uploaded GEMP1 EYE1 practice PDF: 16 case clusters, 120 questions, BCMH/CVS/RESP, original short-answer targets and explanations.":p==="Paper 1"?"All 336 questions and explanations imported from the earlier uploaded BCMH, CVS and Respiratory practice PDF.":"Cases from MuaazMed’s existing Renal, GIT, MSK and Haem/Onc question bank.";
- root.innerHTML='<div class="cp-hero"><a class="cp-back" href="index.html#practice">← All practice questions</a><div class="cp-overline">GEMP1 · EXAM PREP</div><h1>Blind case cluster practice</h1><p>Work through complete clinical cases without being told the diagnosis. Choose a paper, answer each SBA or VSAQ, and get instant feedback before moving on.</p></div>'+
+ const paperDescription=p.startsWith("EYE1 Paper")?"Complete uploaded GEMP1 EYE1 practice PDF: 16 case clusters, 120 questions, BCMH/CVS/RESP, original short-answer targets and explanations.":p==="Paper 1"?"Original site cases plus uploaded Paper 1 practice questions. Uploaded cases without condition tags remain under All.":"49 high-yield condition clusters, the existing bank, and two 120-question untimed mock-study sets.";
+ root.innerHTML='<div class="cp-hero"><a class="cp-back" href="index.html#practice">← All practice questions</a><div class="cp-overline">GEMP1 · EXAM PREP</div><h1>Case cluster study mode</h1><p>Work through complete clinical cases without being told the diagnosis. Choose a paper, answer each SBA or VSAQ, and get instant feedback before moving on.</p></div>'+
  '<div class="cp-tabs" role="group" aria-label="Select practice paper">'+paperTabs+'</div>'+
  '<div class="cp-stats">'+statCard(p)+'</div>'+
- '<section class="cp-config"><div><h2>'+esc(p)+' · Case clusters</h2><p>'+esc(paperDescription)+'</p><label class="cp-toggle"><input type="checkbox" id="cp-shuffle" '+(db.randomize?"checked":"")+'> Randomise cluster order</label></div><div class="cp-actions"><button class="cp-primary" data-act="start">Start new practice →</button>'+(s?'<button class="cp-secondary" data-act="continue">Continue session ('+score(s).answered+' answered)</button>':"")+'</div></section>'+
- '<div class="cp-list-head"><h2>Choose any cluster</h2><span>Condition titles hidden until you review the answer</span></div>'+
- '<div class="cp-grid">'+visible.map((c,i)=>'<button class="cp-cluster" data-act="open" data-idx="'+i+'"><span class="cp-cluster-number">CLUSTER '+String(i+1).padStart(2,"0")+'</span><strong>Clinical case</strong><small>'+c.questions.length+' questions · SBA + short answers</small><span class="cp-cluster-cta">Practise cluster →</span></button>').join("")+'</div>'+
+ '<section class="cp-config"><div><h2>'+esc(p)+' · Case clusters</h2><p>'+esc(paperDescription)+'</p><div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:15px">'+(p==="Paper 2"?'<label>Question set '+choiceSelect("cp-bank",[["sprint","High-yield sprint"],["all","Full bank"],["mockA","Mock A · study"],["mockB","Mock B · study"]],db.bank)+'</label>':"")+(subjects().length?'<label>Subject '+choiceSelect("cp-subject",[["All","All subjects"],...subjects().map(s=>[s.name,s.name])],db.subject)+'</label><label>Core condition '+choiceSelect("cp-condition",[["All","All conditions"],...conditions().map(n=>[n,n])],db.condition)+'</label>':"")+'</div><p>'+cases.length+' matching clusters · '+cases.reduce((n,x)=>n+x.c.questions.length,0)+' questions</p><label class="cp-toggle"><input type="checkbox" id="cp-shuffle" '+(db.randomize?"checked":"")+'> Randomise cluster order</label></div><div class="cp-actions"><button class="cp-primary" data-act="start">Start new practice →</button>'+(s?'<button class="cp-secondary" data-act="continue">Continue session ('+score(s).answered+' answered)</button>':"")+'</div></section>'+
+ '<div class="cp-list-head"><h2>Choose any cluster</h2><span>Condition titles hidden unless you choose to reveal them</span></div>'+
+ '<div class="cp-grid">'+visible.map(({c,i},j)=>'<article class="cp-cluster"><span class="cp-cluster-number">CLUSTER '+String(j+1).padStart(2,"0")+'</span><strong>'+esc(db.revealed[c.id]?titleOf(c):"Clinical case")+'</strong><small>'+c.questions.length+' questions · SBA + short answers'+(c.sprint?" · Sprint":"")+'</small><div class="cp-actions"><button class="cp-secondary" data-act="reveal" data-id="'+esc(c.id)+'">'+(db.revealed[c.id]?"Hide condition":"Reveal condition")+'</button><button class="cp-primary" data-act="open" data-idx="'+i+'">Practise →</button></div></article>').join("")+'</div>'+
  (cases.length>visible.length?'<button class="cp-secondary cp-more" data-act="more">Show all '+cases.length+' clusters</button>':"")+
  '<p class="cp-note">Study-paper groupings are for revision, not a guarantee of Wits examination allocation. All questions are educational practice, not official Wits past-paper questions. Progress is saved on this device.</p>';
 }
@@ -64,29 +73,31 @@ function play(){
  const caseQuestions=c.questions.length,atLast=s.pos===s.order.length-1&&s.q===caseQuestions-1;
  const currLabel='Cluster '+String(s.pos+1).padStart(2,"0")+' of '+totalCases;
  const choices=q.type==="SBA"?(q.options||[]).map((opt,i)=>{const letter="ABCD"[i],isRight=letter===q.answer,isWrong=a&&letter===a.given&&!isRight;return '<button data-act="choose" data-value="'+letter+'" class="cp-choice '+(a&&isRight?"correct":isWrong?"incorrect":"")+'" '+(a?"disabled":"")+'><span class="cp-letter">'+letter+'</span><span>'+esc(opt)+'</span>'+(a&&isRight?'<b class="cp-answer-mark">✓</b>':isWrong?'<b class="cp-answer-mark">✕</b>':"")+'</button>';}).join(""):'<form id="cp-vsaq-form"><label for="cp-vsaq">Your answer (usually 1–3 words)</label><input id="cp-vsaq" autocomplete="off" placeholder="Type your answer" '+(a?"disabled":"")+' value="'+(a?esc(a.given):"")+'"><button class="cp-primary" type="submit" '+(a?"disabled":"")+'>Check answer</button></form>';
- const eachOption=a&&q.type==="SBA"&&q.options?'<section class="cp-option-feedback"><h3>Option-by-option review</h3>'+q.options.map((opt,i)=>{const letter="ABCD"[i],isRight=letter===q.answer,reason=(Array.isArray(q.whyOptions)&&q.whyOptions[i])||(!isRight?"This is not the best choice for this scenario. The source selects "+correctLabel(q)+". "+(q.explain||"Compare the clinical findings."):(q.explain||"This is the best-supported answer."));return '<div class="cp-option-note '+(isRight?"is-right":"is-wrong")+'"><b>'+letter+'. '+esc(opt)+' — '+(isRight?"Correct":"Incorrect")+'</b><p>'+esc(reason)+'</p></div>';}).join("")+'</section>':"";
+ const eachOption=a&&q.type==="SBA"&&q.options?'<section class="cp-option-feedback"><h3>Option-by-option review</h3>'+q.options.map((opt,i)=>{const letter="ABCD"[i],isRight=letter===q.answer,reason=(Array.isArray(q.whyOptions)&&q.whyOptions[i])||(!isRight?"No separate distractor rationale was provided in this source.":(q.explain||"This is the best-supported answer."));return '<div class="cp-option-note '+(isRight?"is-right":"is-wrong")+'"><b>'+letter+'. '+esc(opt)+' — '+(isRight?"Correct":"Incorrect")+'</b><p>'+esc(reason)+'</p></div>';}).join("")+'</section>':"";
  const fb=a?'<div class="cp-feedback '+(a.correct?"correct":"incorrect")+'" role="status" aria-live="polite"><span class="cp-feedback-status">'+(a.correct?"✓ Correct":"✕ Not quite")+'</span><div class="cp-solution"><small>CORRECT ANSWER</small><strong>'+esc(correctLabel(q))+'</strong></div><h3>Why this is the answer</h3><p>'+esc(q.explain||"")+'</p>'+eachOption+(a.given&&!a.correct&&q.whyOptions&&q.type==="SBA"&&q.whyOptions["ABCD".indexOf(a.given)]?'<p><b>Your chosen option:</b> '+esc(q.whyOptions["ABCD".indexOf(a.given)])+'</p>':"")+(q.point?'<p class="cp-takeaway"><b>Key point:</b> '+esc(q.point)+'</p>':"")+(q.type==="VSAQ"&&!a.correct?'<button class="cp-secondary cp-self" data-act="selfmark">My equivalent answer is correct</button>':"")+'</div>':"";
  root.innerHTML='<div class="cp-play"><div class="cp-play-top"><button class="cp-back" data-act="home">← Clusters</button><span class="cp-pill">'+esc(db.active)+'</span><label class="cp-jump-label">Jump to case <select id="cp-jump" aria-label="Jump to cluster">'+s.order.map((_,i)=>'<option value="'+i+'" '+(i===s.pos?"selected":"")+'>Case '+(i+1)+'</option>').join("")+'</select></label><span class="cp-saving">✓ Saved on this device</span></div>'+
  '<div class="cp-progress"><div><b>'+currLabel+'</b><span>Question '+(s.q+1)+' of '+caseQuestions+' · '+t.answered+' attempted · '+t.correct+' correct</span></div><div class="cp-progress-bar"><span style="width:'+Math.round((s.pos+s.q/caseQuestions)/totalCases*100)+'%"></span></div></div>'+
- '<article class="cp-case"><div class="cp-case-kicker">CLINICAL SCENARIO</div><div class="cp-scenario">'+esc(c.scenario||"")+'</div><div class="cp-qkicker">QUESTION '+(s.q+1)+' · '+(q.type==="VSAQ"?"VERY SHORT ANSWER":s.q===5?"DATA INTERPRETATION":"SINGLE BEST ANSWER")+'</div><h2>'+esc(q.q)+'</h2><div class="cp-options">'+choices+'</div>'+fb+
+ '<article class="cp-case"><div class="cp-case-kicker">CLINICAL SCENARIO</div><button class="cp-secondary" data-act="reveal" data-id="'+esc(c.id)+'">'+(db.revealed[c.id]?"Hide condition":"Reveal condition")+'</button>'+(db.revealed[c.id]?'<p><b>'+esc(titleOf(c))+'</b></p>':"")+'<div class="cp-scenario">'+esc(c.scenario||"")+'</div><div class="cp-qkicker">QUESTION '+(s.q+1)+' · '+(q.type==="VSAQ"?"VERY SHORT ANSWER":q.isData?"DATA INTERPRETATION":"SINGLE BEST ANSWER")+'</div><h2>'+esc(q.q)+'</h2><div class="cp-options">'+choices+'</div>'+fb+
  '<div class="cp-next"><button class="cp-secondary" data-act="prev" '+(s.pos===0&&s.q===0?"disabled":"")+'>← Previous</button><button class="cp-secondary" data-act="skip">Skip case ↷</button><button class="cp-primary" data-act="next" '+(!a?"disabled":"")+'>'+(atLast?"Finish practice →":s.q===caseQuestions-1?"Next cluster →":"Next question →")+'</button></div></article></div>';
 }
 function render(){if(!root)return;if(db.view==="play")play();else landing();}
 root.addEventListener("click",e=>{const target=e.target.closest("[data-act]");if(!target)return;const act=target.dataset.act;e.preventDefault();
- if(act==="paper"){db.active=target.dataset.paper;db.view="landing";db.showAll=false;if(window.history?.replaceState&&window.location){const params=new URLSearchParams(window.location.search);params.set("paper",db.active);window.history.replaceState(null,"",window.location.pathname+"?"+params.toString());}save();render();}
+ if(act==="paper"){db.active=target.dataset.paper;db.view="landing";db.showAll=false;db.subject="All";db.condition="All";db.bank="sprint";if(window.history?.replaceState&&window.location){const params=new URLSearchParams(window.location.search);params.set("paper",db.active);window.history.replaceState(null,"",window.location.pathname+"?"+params.toString());}save();render();}
  if(act==="start"){db.view="play";makeSession(target.dataset.random==="yes"?true:db.randomize);}
  if(act==="continue"){db.view="play";save();render();}
  if(act==="home"){db.view="landing";save();render();}
  if(act==="more"){db.showAll=true;save();render();}
- if(act==="open"){const idx=+target.dataset.idx;const order=pool[db.active].map((_,i)=>i);db.sessions[db.active]={order,pos:idx,q:0,answers:{},finished:false,created:Date.now(),randomize:false};db.view="play";save();render();}
+ if(act==="reveal"){const id=target.dataset.id;db.revealed[id]=!db.revealed[id];save();render();}
+ if(act==="open"){const idx=+target.dataset.idx;const order=filtered().map(x=>x.i),pos=order.indexOf(idx);if(pos<0)return;db.sessions[db.active]={order,pos,q:0,answers:{},finished:false,created:Date.now(),randomize:false};db.view="play";save();render();}
  if(act==="choose")answerRecord(target.dataset.value);
  if(act==="prev")next(-1);
  if(act==="skip")skipCase();
  if(act==="next")next(1);
  if(act==="selfmark"){const s=session(),k=current(s).key;if(s.answers[k]){s.answers[k].correct=true;s.answers[k].selfMarked=true;save();render();}}
 });
-root.addEventListener("change",e=>{if(e.target.id==="cp-shuffle"){db.randomize=e.target.checked;save();}if(e.target.id==="cp-jump"){const s=session(),n=Number(e.target.value);if(s&&Number.isInteger(n)&&n>=0&&n<s.order.length){s.pos=n;s.q=0;save();render();}}});
+root.addEventListener("change",e=>{if(["cp-bank","cp-subject","cp-condition"].includes(e.target.id)){if(e.target.id==="cp-bank")db.bank=e.target.value;if(e.target.id==="cp-subject"){db.subject=e.target.value;db.condition="All";}if(e.target.id==="cp-condition")db.condition=e.target.value;db.showAll=false;save();render();return;}if(e.target.id==="cp-shuffle"){db.randomize=e.target.checked;save();}if(e.target.id==="cp-jump"){const s=session(),n=Number(e.target.value);if(s&&Number.isInteger(n)&&n>=0&&n<s.order.length){s.pos=n;s.q=0;save();render();}}});
 root.addEventListener("submit",e=>{if(e.target.id==="cp-vsaq-form"){e.preventDefault();answerRecord(document.getElementById("cp-vsaq")?.value);}});
 document.querySelectorAll("[data-cp-mobile-menu]").forEach(b=>b.addEventListener("click",()=>document.querySelector(".sidebar")?.classList.toggle("cp-open")));
+if(requestedId){const index=pool[db.active].findIndex(c=>c.id==="site-"+requestedId);if(index>=0){const order=filtered().map(x=>x.i);const pos=order.indexOf(index);if(pos>=0){db.sessions[db.active]={order,pos,q:0,answers:{},finished:false,created:Date.now(),randomize:false};db.view="play";save();}}}
 render();
 })();
