@@ -1,15 +1,27 @@
 const cfg=window.MED_BACKEND||{},root=document.getElementById("account"),admin=document.getElementById("admin"),status=document.getElementById("status");
 const $=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const msg=t=>status.textContent=t||"";
+const msg=t=>{status.textContent=t||"";if(t)status.scrollIntoView({block:"nearest"});};
 let api,user,member,mode="signin",busy=false,recovery=false,createdCode="";
 const next=()=>{const raw=new URLSearchParams(location.search).get("next");if(!raw||!raw.startsWith("/")||raw.startsWith("//"))return "/";try{const u=new URL(raw,location.origin);return u.origin===location.origin&&!u.pathname.startsWith("/account")&&!u.pathname.startsWith("/_auth")?u.pathname+u.search+u.hash:"/";}catch{return "/";}};
 const rpc=async(name,args={})=>{const {data,error}=await api.rpc(name,args);if(error)throw Error(error.message);return data;};
 const session=async()=>{const {data,error}=await api.auth.getSession();if(error)throw error;return data.session;};
-async function openStudy(){
- const s=await session();if(!s||!member?.active)throw Error("Membership required.");
- if(cfg.protectedHosting){const r=await fetch("/_auth/session",{method:"POST",headers:{Authorization:"Bearer "+s.access_token}});if(!r.ok)throw Error("Could not establish protected session. Sign in again.");}
- location.assign(next());
+async function openProtected(target){
+ const s=await session();if(!s||!member?.active)throw Error("An active membership is required. Sign in again.");
+ msg("Opening your study platform…");
+ if(cfg.protectedHosting){
+   let r;
+   try{r=await fetch("/_auth/session",{method:"POST",credentials:"same-origin",cache:"no-store",redirect:"error",headers:{Authorization:"Bearer "+s.access_token}});}
+   catch(e){throw Error("Cloudflare session request failed. Check your connection and retry.");}
+   if(!r.ok)throw Error("Cloudflare session failed (HTTP "+r.status+"). Sign out and back in, then retry.");
+   // Check the browser actually sends its secure session cookie before navigating.
+   const probe=await fetch("/index.html",{method:"HEAD",credentials:"same-origin",cache:"no-store",redirect:"manual",headers:{Accept:"text/html"}});
+   if(probe.type==="opaqueredirect"||probe.status===302||probe.status===403)
+     throw Error("Cloudflare did not accept the browser session. Reopen this page in Safari and sign in again.");
+   if(!probe.ok)throw Error("Study site unavailable (HTTP "+probe.status+").");
+ }
+ location.assign(target==="/"?"/index.html":target);
 }
+async function openStudy(){await openProtected(next());}
 function showSignIn(){
  admin.hidden=true;
  root.innerHTML='<h1>'+(mode==="signup"?"Create your free account":mode==="reset"?"Reset password":"Welcome back")+'</h1><p class="muted">Use your email address. A valid invitation is required to activate a student membership.</p><form id="login-form"><label for="email">Email address</label><input id="email" required type="email" autocomplete="email">'+(mode==="reset"?"":'<label for="password">Password (at least 8 characters)</label><input id="password" required minlength="8" type="password" autocomplete="'+(mode==="signup"?"new-password":"current-password")+'">')+(mode==="signup"?'<label for="invite">Invitation code</label><input id="invite" required maxlength="100" autocomplete="off" autocapitalize="characters" spellcheck="false"><p class="muted">A valid invitation activates access. The owner can review synced study performance and nickname changes even if you hide your public leaderboard profile.</p>':"")+'<button class="primary" type="submit">'+(mode==="signup"?"Create free account":mode==="reset"?"Send reset email":"Sign in")+'</button></form><button data-action="mode" data-mode="'+(mode==="signup"?"signin":"signup")+'">'+(mode==="signup"?"Already registered? Sign in":"Create free account")+'</button><button data-action="mode" data-mode="reset">Forgot password?</button>'+(cfg.protectedHosting?"":'<p class="muted">Public preview hosting: study files are not private yet.</p><a class="link" href="/">Return to study site</a>');
@@ -71,7 +83,7 @@ function exportAnalytics(){
 }
 
 async function redeem(code){const r=await rpc("redeem_invite",{p_code:code.trim()});if(!r?.ok)throw Error(r?.error||"Invitation could not be redeemed.");sessionStorage.removeItem("med-pending-invite");await refresh();msg("Membership activated.");}
-async function perform(fn){if(busy)return;busy=true;msg("");try{await fn();}catch(e){msg(e.message||"Please try again.");}finally{busy=false;}}
+async function perform(fn){if(busy){msg("Another request is still in progress. Please retry once it finishes.");return;}busy=true;msg("");try{await fn();}catch(e){msg(e.message||"Please try again.");}finally{busy=false;}}
 document.addEventListener("submit",e=>{e.preventDefault();const id=e.target.id;perform(async()=>{
  if(id==="login-form"){
   const email=$("email").value.trim(),password=$("password")?.value;
@@ -86,7 +98,7 @@ document.addEventListener("submit",e=>{e.preventDefault();const id=e.target.id;p
 document.addEventListener("click",e=>{const b=e.target.closest("[data-action]");if(!b)return;perform(async()=>{switch(b.dataset.action){
  case "mode":mode=b.dataset.mode;showSignIn();break;
  case "study":await openStudy();break;
- case "board":{const s=await session();if(cfg.protectedHosting){const r=await fetch("/_auth/session",{method:"POST",headers:{Authorization:"Bearer "+s.access_token}});if(!r.ok)throw Error("Could not establish protected session.");}location.assign("/leaderboard.html");break;}
+ case "board":await openProtected("/leaderboard.html");break;
  case "logout":{const {error}=await api.auth.signOut();if(error)throw error;if(cfg.protectedHosting)await fetch("/_auth/logout",{method:"POST"});sessionStorage.removeItem("med-pending-invite");createdCode="";analyticsRows=[];admin.replaceChildren();mode="signin";await refresh();break;}
  case "analytics-refresh":await loadAnalytics();break;
  case "analytics-detail":await studentHistory(b.dataset.id);break;
