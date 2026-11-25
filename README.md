@@ -140,3 +140,7 @@ The **EXAM PREP → Continuous Practice** page (`#flow`) offers two independent,
 - Shows running position, answered count, accuracy, and an end-of-paper review of mistakes; no timer or formal mock-exam submission.
 
 **Academic caveat:** Paper 1 and Paper 2 here are the student's revision groupings, not an official Wits allocation or prediction of examinable conditions. The latest Wits guide explains that the core scope defines what *may* be examined, not the exact content of each exam paper. This is revision software, not a guarantee of a particular result.
+
+## Paper 2 master bank and difficulty filters
+
+Continuous Practice now has All, Easy / core and Hard / advanced sessions for both papers, and a dedicated Master bank (Hard) session for Paper 2. Each filter has independent saved progress; the original All-mode question order is retained, with extreme and master cases appended. Difficulty is an authored classification, not a measured item difficulty. The new master dataset is the original 117-cluster, 936-question PDF bank, including three optional PE crossover clusters. The empty `data/paper2-master-hard.json` is a deployment placeholder: replace it with the exported JSON file to publish the bank for every student. Until then, students can import that JSON in Continuous Practice for use in the same browser/device. The import validates the complete bank, uses data only (no executable code), and retains existing progress. The bank uses the original concise explanations and self-marked VSAQs.

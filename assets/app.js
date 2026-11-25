@@ -1,7 +1,8 @@
-(function(){
+(async function(){
 "use strict";
+await window.MED_MASTER_READY;
 const EYE_NOTES=Array.isArray(window.MED_NOTES)?window.MED_NOTES:[];
-const RAW_CASES=[...(window.MED_BANK||[]),...(window.MED_EXTRA||[]),...(window.MED_INTEGRATED_CASES||[])];
+const RAW_CASES=[...(window.MED_BANK||[]),...(window.MED_EXTRA||[]),...(window.MED_INTEGRATED_CASES||[]),...(window.MED_P2_EXTREME||[]),...(window.MED_MASTER_HARD||[])];
 const SLIDES=window.MED_SLIDES||[];
 const CONFIG=window.MED_BACKEND||{};
 const CORE_MAP={
@@ -24,7 +25,7 @@ for(const p of PAPER_GROUPS)for(const s of p.subjects)for(const name of s.condit
  tags.push({paper:p.paper,subject:s.name});STUDY_TAGS.set(key,tags);
 }
 function tagsFor(name){return STUDY_TAGS.get(String(name||"").toLowerCase())||[]}
-function caseTags(c){const unique=new Map();for(const name of c.coreNames||[])for(const tag of tagsFor(name))if(!c.paper2Only||tag.paper==="Paper 2")unique.set(tag.paper+"|"+tag.subject,tag);return [...unique.values()]}
+function caseTags(c){if(c.masterHard&&c.module==="Crossover")return [{paper:"Paper 2",subject:"Crossover"}];const unique=new Map();for(const name of c.coreNames||[])for(const tag of tagsFor(name))if(!c.paper2Only||tag.paper==="Paper 2")unique.set(tag.paper+"|"+tag.subject,tag);return [...unique.values()]}
 function subjectOptions(paper){return PAPER_GROUPS.filter(p=>paper==="All"||p.paper===paper).flatMap(p=>p.subjects.map(s=>s.name)).filter((s,i,a)=>a.indexOf(s)===i)}
 function selectOptions(paper,subject,subjectOnly=false){
  const all=subjectOnly?'<option value="All">All subjects</option>':'<option value="All">Both study papers</option>';
@@ -35,9 +36,9 @@ function subjectMark(paper,subject){return '<span class="study-mini-badge">'+esc
 function labelsFor(name){return tagsFor(name).map(t=>subjectMark(t.paper,t.subject)).join("")}
 function caseLabel(c){const t=caseTags(c);return t.length?t.slice(0,3).map(x=>x.paper+" / "+x.subject).join(" · "):"Integrated"}
 const CASES=RAW_CASES.map(c=>Object.assign({},c,{coreNames:Array.isArray(c.core)?c.core:(c.core?[c.core]:(CORE_MAP[c.id]||[]))}));
-const CORE_CASES=CASES.filter(c=>c.coreNames.length>0);
+const CORE_CASES=CASES.filter(c=>c.coreNames.length>0&&!c.masterHard&&!c.extreme);
 const KEY="muaazmed-gemp1-2026-v5";
-const defaultState=()=>({learned:[],saved:[],quickChecks:{},flashcards:{},flashSession:null,caseAnswers:{},practiceHistory:[],flowSessions:{},flags:{},mockSessions:{},mockHistory:[],guestName:"Guest student",lastVisited:null});
+const defaultState=()=>({learned:[],saved:[],quickChecks:{},flashcards:{},flashSession:null,caseAnswers:{},practiceHistory:[],flowSessions:{},flowDifficulty:{},flags:{},mockSessions:{},mockHistory:[],guestName:"Guest student",lastVisited:null});
 let state=defaultState();
 try{const p=JSON.parse(localStorage.getItem(KEY)||"null");if(p&&typeof p==="object")state=Object.assign(defaultState(),p)}catch(e){}
 if(!Array.isArray(state.learned))state.learned=[];
@@ -48,6 +49,7 @@ if(!state.mockSessions||typeof state.mockSessions!=="object")state.mockSessions=
 if(!state.caseAnswers||typeof state.caseAnswers!=="object")state.caseAnswers={};
 if(!Array.isArray(state.practiceHistory))state.practiceHistory=[];
 if(!state.flowSessions||typeof state.flowSessions!=="object")state.flowSessions={};
+if(!state.flowDifficulty||typeof state.flowDifficulty!=="object")state.flowDifficulty={};
 let filterNotes="All",notePaper="All",noteSubject="All",filterCases="All",casePaper="All",caseSubject="All",filterLectures="All",searchText="",currentTimer=null,toastTimer=null;
 let supabase=null,authUser=null,syncTimer=null,authReady=false,communityEntries=[];
 let activeQuestion=null;
@@ -169,7 +171,7 @@ function practiceCaseStats(c){const saved=c.questions.map(q=>state.caseAnswers[q
 function practiceCaseCard(c){
  const st=practiceCaseStats(c),tags=caseTags(c);
  return '<article class="practice-case-card"><div class="practice-case-meta">'+
-  badge(c.difficulty==="Challenge"?"Challenge · hard":c.isIntegrated?"Integrated reasoning":"Core condition",c.difficulty==="Challenge"?"amber":"blue")+
+  badge(c.masterHard?"Master bank · Hard":isHardCase(c)?"Hard / advanced":c.isIntegrated?"Integrated reasoning":"Core condition",isHardCase(c)?"amber":"blue")+
   '<span>'+c.questions.length+' questions · '+c.questions.filter(q=>q.type==="VSAQ").length+' VSAQ</span></div>'+
   '<h4>'+esc(c.title)+'</h4><p>'+clip(c.scenario,155)+'</p>'+
   '<div class="practice-case-footer"><span>'+st.attempted+' / '+st.total+' attempted'+(st.wrong?' · <b class="practice-miss">'+st.wrong+' to review</b>':"")+'</span>'+
@@ -185,7 +187,7 @@ function needsPracticeReview(c){
 }
 function practiceFilter(c){
  const tags=caseTags(c);
- const scope=filterCases==="All"||(filterCases==="Challenge"?c.difficulty==="Challenge":filterCases==="Core"?!c.isIntegrated&&c.coreNames.length>0:filterCases==="Integrated"?!!c.isIntegrated:filterCases==="Mistakes"?needsPracticeReview(c):filterCases==="Extension"?c.coreNames.length===0:false);
+ const scope=filterCases==="All"||(filterCases==="Challenge"?isHardCase(c):filterCases==="Core"?!c.isIntegrated&&c.coreNames.length>0:filterCases==="Integrated"?!!c.isIntegrated:filterCases==="Mistakes"?needsPracticeReview(c):filterCases==="Extension"?c.coreNames.length===0:false);
  const paper=casePaper==="All"||tags.some(t=>t.paper===casePaper);
  const subject=caseSubject==="All"||tags.some(t=>t.subject===caseSubject&&(casePaper==="All"||t.paper===casePaper));
  const query=!searchText||norm(c.title+" "+c.module+" "+c.coreNames.join(" ")+" "+c.scenario).includes(norm(searchText));
@@ -238,6 +240,10 @@ function practiceFeedback(c,q,saved){
 /* A continuous learning sequence, not a timed or official Wits exam paper.
    Case IDs are de-duplicated within each paper even if a condition crosses subjects.
    The user's study split determines grouping, not official exam allocation. */
+function isHardCase(c){return !!(c.masterHard||c.extreme||c.expansion||/challenge|hard|advanced|expert|extreme/i.test(String(c.difficulty||"")));}
+const FLOW_LEVELS={all:"All",easy:"Easy / core",hard:"Hard / advanced",master:"Master bank (Hard)"};
+const flowKey=(paper,level="all")=>level==="all"?paper:paper+"|"+level;
+function flowLabel(key){const [paper,level="all"]=key.split("|");return level==="all"?paper:paper+" · "+FLOW_LEVELS[level];}
 function buildFlowQueues(){
  const out=new Map();
  for(const p of PAPER_GROUPS){
@@ -248,24 +254,27 @@ function buildFlowQueues(){
   }
   for(const s of p.subjects){
    for(const name of s.conditions){
-    const linked=CASES.filter(c=>!c.expansion&&!c.isIntegrated&&c.coreNames.some(x=>norm(x)===norm(name)))
+    const linked=CASES.filter(c=>!c.masterHard&&!c.extreme&&!c.expansion&&!c.isIntegrated&&c.coreNames.some(x=>norm(x)===norm(name)))
       .sort((a,b)=>(a.difficulty==="Challenge")-(b.difficulty==="Challenge")||(a.id||0)-(b.id||0));
     linked.forEach(c=>add(c,s.name));
    }
    /* Two older extension cases have a known Renal/GIT module. */
-   CASES.filter(c=>!c.isIntegrated&&!c.coreNames.length&&norm(c.module)===norm(s.name))
+   CASES.filter(c=>!c.masterHard&&!c.extreme&&!c.isIntegrated&&!c.coreNames.length&&norm(c.module)===norm(s.name))
      .sort((a,b)=>(a.id||0)-(b.id||0)).forEach(c=>add(c,s.name));
   }
   /* Integrated cases appear after the core-system practice for each relevant paper. */
-  CASES.filter(c=>c.isIntegrated&&caseTags(c).some(t=>t.paper===p.paper))
+  CASES.filter(c=>!c.masterHard&&!c.extreme&&c.isIntegrated&&caseTags(c).some(t=>t.paper===p.paper))
     .sort((a,b)=>(a.id||0)-(b.id||0)).forEach(c=>add(c,"Integrated"));
   // Append new Paper 2 cases so previous continuous-flow indexes remain stable.
-  if(p.paper==="Paper 2")for(const c of CASES.filter(c=>c.expansion)){const subject=p.subjects.find(s=>s.conditions.some(n=>c.coreNames.some(x=>norm(x)===norm(n))))?.name||"Integrated";add(c,subject);}
-  const items=[];
-  ordered.forEach((item,ci)=>item.c.questions.forEach((q,qi)=>items.push({
-   c:item.c,q,subject:item.subject,caseIndex:ci,questionIndex:qi
-  })));
-  out.set(p.paper,{paper:p.paper,cases:ordered,items,subjects:p.subjects.map(s=>s.name)});
+  if(p.paper==="Paper 2")for(const c of CASES.filter(c=>c.expansion&&!c.masterHard&&!c.extreme)){const subject=p.subjects.find(s=>s.conditions.some(n=>c.coreNames.some(x=>norm(x)===norm(n))))?.name||"Integrated";add(c,subject);}
+  // Keep the original all-question sequence as an unchanged prefix for saved sessions.
+  if(p.paper==="Paper 2")for(const c of CASES.filter(c=>c.extreme||c.masterHard))add(c,c.module||"Integrated");
+  const decks={all:ordered,easy:ordered.filter(x=>!isHardCase(x.c)),hard:ordered.filter(x=>isHardCase(x.c))};
+  if(p.paper==="Paper 2")decks.master=ordered.filter(x=>x.c.masterHard);
+  for(const [level,deck] of Object.entries(decks)){
+   const items=deck.flatMap((item,ci)=>item.c.questions.map((q,qi)=>({c:item.c,q,subject:item.subject,caseIndex:ci,questionIndex:qi})));
+   out.set(flowKey(p.paper,level),{paper:p.paper,level,cases:deck,items,subjects:p.subjects.map(s=>s.name)});
+  }
  }
  return out;
 }
@@ -280,6 +289,7 @@ function flowGetSession(paper){
  if(!Number.isInteger(sess.index)||sess.index<0)sess.index=0;
  const max=FLOW_QUEUES.get(paper).items.length;
  sess.index=Math.min(sess.index,max);
+ if(sess.finished&&sess.index<max)sess.finished=false;
  return sess;
 }
 function flowCounts(paper){
@@ -288,25 +298,29 @@ function flowCounts(paper){
  return {paper,cases:pack.cases.length,total:pack.items.length,answered:records.length,
   graded:graded.length,correct:graded.filter(a=>a.correct).length,wrong:graded.filter(a=>!a.correct).length,
   percent:graded.length?Math.round(100*graded.filter(a=>a.correct).length/graded.length):0,
-  started:!!sess,finished:!!sess?.finished};
+  started:!!sess,finished:!!sess?.finished&&sess.index>=pack.items.length};
 }
 function flowPaperCard(p){
- const pack=FLOW_QUEUES.get(p.paper),progress=flowCounts(p.paper);
+ const levels=p.paper==="Paper 2"?["all","easy","hard","master"]:["all","easy","hard"];
+ const selected=state.flowDifficulty?.[p.paper];const level=levels.includes(selected)?selected:"all";const key=flowKey(p.paper,level);
+ const pack=FLOW_QUEUES.get(key),progress=flowCounts(key);
  const pct=Math.round(100*progress.answered/Math.max(1,progress.total));
  const subjectList=p.subjects.map(s=>s.name).join(" · ");
  return '<article class="flow-paper-card"><div class="flow-card-top"><span class="flow-paper-label">'+esc(p.paper)+'</span>'+
  badge(progress.finished?"Completed":progress.answered?"In progress":"Ready",progress.finished?"green":"blue")+'</div>'+
- '<h2>'+esc(subjectList)+'</h2><p>All mapped clinical case clusters, including challenging SBAs, result interpretation and VSAQs. One question at a time, with immediate feedback.</p>'+
+ '<h2>'+esc(subjectList)+'</h2><p>One question at a time with immediate feedback. Difficulty reflects authored question-bank labels, not measured performance.</p>'+
+ '<label>Difficulty <select class="select" data-flow-filter="'+esc(p.paper)+'" aria-label="'+esc(p.paper)+' difficulty">'+levels.map(v=>'<option value="'+v+'"'+(v===level?' selected':'')+'>'+esc(FLOW_LEVELS[v])+'</option>').join("")+'</select></label>'+
  '<div class="flow-paper-metrics"><div><strong>'+pack.cases.length+'</strong><span>Distinct cases</span></div><div><strong>'+pack.items.length+'</strong><span>Questions</span></div><div><strong>'+progress.graded+'</strong><span>Graded</span></div></div>'+
  '<div class="flow-progress-track"><span style="width:'+pct+'%"></span></div>'+
  '<div class="flow-progress-meta"><span>'+progress.answered+' of '+progress.total+' answered</span><b>'+pct+'%</b></div>'+
- '<div class="flow-paper-actions"><button class="btn btn-primary" data-action="flow-start" data-paper="'+esc(p.paper)+'">'+(progress.finished?"Review completed flow →":progress.started?"Resume practice →":"Start paper flow →")+'</button>'+
- (progress.started?'<button class="btn btn-sm" data-action="flow-restart" data-paper="'+esc(p.paper)+'">Start again</button>':"")+'</div></article>';
+ '<div class="flow-paper-actions"><button class="btn btn-primary" data-action="flow-start" data-paper="'+esc(key)+'" '+(!pack.items.length?"disabled":"")+'>'+(progress.finished?"Review completed flow →":progress.started?"Resume practice →":"Start paper flow →")+'</button>'+
+ (progress.started?'<button class="btn btn-sm" data-action="flow-restart" data-paper="'+esc(key)+'" '+(!pack.items.length?"disabled":"")+'>Start again</button>':"")+'</div></article>';
 }
 function renderFlowLanding(){
  $("view").innerHTML=head("CONTINUOUS PRACTICE","Keep going. One case after another.","Work through linked clinical case questions without returning to the case library. Choose Paper 1 or Paper 2; every answer reveals its explanation immediately.","")+
  '<div class="flow-intro"><strong>How it works:</strong> Choose a paper, answer, read the explanation, then press <b>Next</b>. At the last question of a case, Next opens the following case automatically. You can leave and resume without losing your place. No timer and no compulsory submission.</div>'+
  '<div class="notice"><a class="btn btn-primary" href="cluster-practice.html?paper=Paper%202&amp;bank=sprint">Quick continuous sprint · Paper 2 →</a> <a class="btn" href="cluster-practice.html?paper=Paper%201">Paper 1 →</a></div><div class="flow-paper-grid">'+PAPER_GROUPS.map(flowPaperCard).join("")+'</div>'+
+ '<div class="flow-intro"><strong>Paper 2 master bank:</strong> '+(window.MED_MASTER_HARD?.length?window.MED_MASTER_HARD.length+' clusters / 936 questions available'+(window.MED_MASTER_REMOTE?' for all students.':' on this browser.'):'117 clusters / 936 questions are ready for import.')+(window.MED_MASTER_REMOTE?'':' <label for="master-hard-file">Import the master bank JSON (this device):</label> <input type="file" id="master-hard-file" accept=".json,application/json" aria-describedby="master-hard-status"><p id="master-hard-status" role="status" class="tiny-note">Import only the original master bank file. Existing progress is retained.</p>')+'</div>'+
  '<p class="flow-qualifier">The Paper 1 / Paper 2 subject split is a student revision organisation, not an official Wits promise about what will appear on either paper. Seven older extension cases without a suitable subject mapping remain in individual-case practice.</p>'+
  '<a class="btn btn-soft" href="#practice">Browse individual cases instead ↗</a>';
 }
@@ -346,11 +360,11 @@ function renderFlow(paper){
  const canGo=flowCanContinue(item,sess);
  const sameCaseStart=item.questionIndex===0;
  $("view").innerHTML='<div class="flow-shell">'+
- '<div class="flow-topline"><a href="#flow" class="back-link">← Paper selection</a><span class="flow-session-tag">'+esc(paper)+' · '+esc(item.subject)+'</span><span class="flow-saved">Progress saved</span></div>'+
+ '<div class="flow-topline"><a href="#flow" class="back-link">← Paper selection</a><span class="flow-session-tag">'+esc(flowLabel(paper))+' · '+esc(item.subject)+'</span><span class="flow-saved">Progress saved</span></div>'+
  '<div class="flow-main-progress"><div><b>Question '+(pos+1)+' of '+pack.items.length+'</b><span>Case '+(item.caseIndex+1)+' of '+pack.cases.length+' · '+scores.answered+' answered · '+scores.correct+' correct</span></div>'+
  '<div class="flow-progress-track"><span style="width:'+pct+'%"></span></div></div>'+
- '<article class="flow-study-card"><div class="flow-scenario-header"><span class="overline">'+esc(paper)+' / '+esc(item.subject)+' · CASE '+(item.caseIndex+1)+'</span>'+
- (c.difficulty==="Challenge"?badge("Challenge","amber"):c.isIntegrated?badge("Integrated case","blue"):badge("Clinical cluster","blue"))+'</div>'+
+ '<article class="flow-study-card"><div class="flow-scenario-header"><span class="overline">'+esc(flowLabel(paper))+' / '+esc(item.subject)+' · CASE '+(item.caseIndex+1)+'</span>'+
+ (isHardCase(c)?badge(c.masterHard?"Master bank · Hard":"Hard / advanced","amber"):badge("Easy / core","blue"))+'</div>'+
  '<details><summary>Reveal cluster title</summary><h2>'+esc(c.title)+'</h2></details>'+
  '<details class="flow-scenario" open><summary>Patient scenario <span>Toggle details</span></summary><p>'+esc(c.scenario)+'</p></details>'+
  '<div class="flow-question-header"><span>QUESTION '+(item.questionIndex+1)+' OF '+c.questions.length+'</span>'+
@@ -372,7 +386,7 @@ function renderFlowFinish(paper,pack,sess){
   byCore.set(name,(byCore.get(name)||0)+1)}
  const review=wrong.slice(0,25).map(({item,i})=>'<button class="flow-review-line" data-action="flow-jump" data-paper="'+esc(paper)+'" data-index="'+i+'"><span>✕</span>'+
   '<span><strong>'+esc(item.c.title)+'</strong><small>Question '+(item.questionIndex+1)+' · '+esc(item.subject)+'</small></span><span>Review →</span></button>').join("");
- $("view").innerHTML=head("CONTINUOUS PRACTICE","You've completed "+paper,"You reached the end of this revision flow. Unanswered questions are not graded; revisit weak areas or start a fresh attempt.","")+
+ $("view").innerHTML=head("CONTINUOUS PRACTICE","You've completed "+flowLabel(paper),"You reached the end of this revision flow. Unanswered questions are not graded; revisit weak areas or start a fresh attempt.","")+
  '<div class="flow-finish-stats"><div><strong>'+progress.total+'</strong><span>Questions in this paper flow</span></div>'+
  '<div><strong>'+progress.correct+' / '+progress.graded+'</strong><span>Correct / graded</span></div>'+
  '<div><strong>'+progress.percent+'%</strong><span>Practice accuracy</span></div>'+
@@ -670,7 +684,8 @@ document.addEventListener("change",e=>{if(Flash.handleChange(e.target))return;if
  if(e.target.id==="notes-paper"){notePaper=e.target.value;noteSubject="All";renderNotes()}
  if(e.target.id==="notes-subject"){noteSubject=e.target.value;refreshNotesList()}
  if(e.target.id==="cases-paper"){casePaper=e.target.value;caseSubject="All";renderCases()}
- if(e.target.id==="cases-subject"){caseSubject=e.target.value;renderCases()}});
+ if(e.target.id==="cases-subject"){caseSubject=e.target.value;renderCases()}
+ if(e.target.dataset.flowFilter){const p=e.target.dataset.flowFilter,v=e.target.value;if(FLOW_QUEUES.has(flowKey(p,v))){state.flowDifficulty={...(state.flowDifficulty||{}),[p]:v};save();renderFlowLanding();}}});
 window.addEventListener("hashchange",()=>{searchText="";$("sidebar")?.classList.remove("open");window.scrollTo({top:0,behavior:"auto"});render()});
 window.addEventListener("keydown",e=>{
  if(Flash.handleKey(e))return;
@@ -701,7 +716,7 @@ window.addEventListener("keydown",e=>{
  }
 });
 window.addEventListener("beforeunload",()=>{clearInterval(currentTimer)});
-if(EYE_NOTES.length!==66||CASES.length!==219||totalQuestions!==1877||SLIDES.length!==72||Flash.cards.length!==1254){console.warn("MuaazMed content validation:",{notes:EYE_NOTES.length,cases:CASES.length,questions:totalQuestions,slides:SLIDES.length})}
+if(EYE_NOTES.length!==66||SLIDES.length!==72||Flash.cards.length!==1254){console.warn("MuaazMed content validation:",{notes:EYE_NOTES.length,cases:CASES.length,questions:totalQuestions,slides:SLIDES.length})}
 if(!location.hash)history.replaceState(null,"","#home");
 setIdentity();render();ensureAuth();
 })();
