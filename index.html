@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/main.css?v=4">
+<link rel="stylesheet" href="assets/main.css?v=5">
 <link rel="stylesheet" href="assets/flashcards.css?v=1">
 <link rel="stylesheet" href="assets/study-groups.css?v=1">
 <link rel="stylesheet" href="assets/practice.css?v=1">
@@ -18,24 +18,31 @@
 <body>
 <div class="app-shell">
  <aside class="sidebar" id="sidebar">
-  <a class="brand" href="#home" aria-label="MuaazMed Home"><span class="brand-mark">M<span class="brand-pulse">+</span></span><span class="brand-text">muaazmed<span>.</span><small>THE WITS STUDY SPACE</small></span></a>
+  <a class="brand" href="#home" aria-label="MuaazMed Home"><span class="brand-mark">M<span class="brand-pulse">+</span></span><span class="brand-text">muaazmed<span>.</span><small>BY THE PEOPLE, FOR THE PEOPLE</small></span></a>
   <div class="term-pill"><span class="live-dot"></span> GEMP1 · EXAM PREP 2026</div>
-  <div class="nav-section">EXAM PREP</div>
-  <nav class="nav-stack" aria-label="Primary navigation">
+  <div class="nav-section">STUDY</div>
+  <nav class="nav-stack" aria-label="Study navigation">
    <a data-nav="home" href="#home"><span class="nav-icon">⌂</span> Overview</a>
+   <a data-nav="flow" href="#flow"><span class="nav-icon">⇢</span> Continuous Practice</a>
+   <a href="cluster-practice.html"><span class="nav-icon">▧</span> Case Clusters</a>
    <a data-nav="practice" href="#practice"><span class="nav-icon">◎</span> Practice Questions</a>
-   <a href="cluster-practice.html"><span class="nav-icon">▧</span> Case Cluster Practice <span class="nav-count">NEW</span></a>
+   <a href="cluster-practice.html?paper=Paper%202&amp;bank=master"><span class="nav-icon">◆</span> Paper 2 Master Bank <span class="nav-count">117</span></a>
    <a href="cluster-practice.html?paper=Paper%202&amp;bank=extreme"><span class="nav-icon">◆</span> Paper 2 Extreme <span class="nav-count">49</span></a>
-   <a href="cluster-practice.html?paper=EYE1%20Paper%201"><span class="nav-icon">▤</span> EYE1 Practice Tests <span class="nav-count">3</span></a>
-   <a href="gemp2-eye-2026.html"><span class="nav-icon">▤</span> GEMP2 EYE 2026 <span class="nav-count">NEW</span></a>
-   <a data-nav="flow" href="#flow"><span class="nav-icon">⇢</span> Continuous Practice <span class="nav-count">NEW</span></a>
-   <a data-nav="notes" href="#notes"><span class="nav-icon">▤</span> Core condition notes <span class="nav-count">66</span></a>
-   <a href="paper2-rapid-review.html"><span class="nav-icon">▤</span> Paper 2 Rapid Review Notes <span class="nav-count">42</span></a>
-   <a data-nav="flashcards" href="flashcards.html#flashcards"><span class="nav-icon">◈</span> Deep flashcards <span class="nav-count">1,254</span></a>
-   <a href="/leaderboard.html"><span class="nav-icon">★</span> Community leaderboard</a>
-   <a href="/account.html"><span class="nav-icon">♙</span> Student account</a>
-   <a data-nav="leaderboard" href="#leaderboard"><span class="nav-icon">✧</span> My progress</a>
-   <a data-nav="lectures" href="#lectures"><span class="nav-icon">▥</span> Lecture library</a>
+  </nav>
+  <div class="nav-section">REVISION RESOURCES</div>
+  <nav class="nav-stack" aria-label="Revision resources">
+   <a data-nav="notes" href="#notes"><span class="nav-icon">▤</span> Core Condition Notes</a>
+   <a href="paper2-rapid-review.html"><span class="nav-icon">▤</span> Paper 2 Rapid Review</a>
+   <a data-nav="flashcards" href="flashcards.html#flashcards"><span class="nav-icon">◈</span> Deep Flashcards</a>
+   <a href="cluster-practice.html?paper=EYE1%20Paper%201"><span class="nav-icon">▤</span> EYE1 Practice Tests</a>
+   <a href="gemp2-eye-2026.html"><span class="nav-icon">▤</span> GEMP2 EYE 2026</a>
+   <a data-nav="lectures" href="#lectures"><span class="nav-icon">▥</span> Lecture Library</a>
+  </nav>
+  <div class="nav-section">YOUR STUDY SPACE</div>
+  <nav class="nav-stack" aria-label="Account and progress">
+   <a data-nav="leaderboard" href="#leaderboard"><span class="nav-icon">✧</span> My Progress</a>
+   <a href="/leaderboard.html"><span class="nav-icon">★</span> Community Leaderboard</a>
+   <a href="/account.html"><span class="nav-icon">♙</span> Student Account</a>
   </nav>
   <div class="nav-section">MORE MUAAZMED</div>
   <nav class="nav-stack" aria-label="Other study modules">
@@ -51,7 +58,7 @@
  </aside>
  <div class="main-column">
   <header class="topbar">
-   <div class="topbar-left"><button class="mobile-menu" data-action="menu" aria-label="Toggle menu">☰</button><span class="breadcrumb">MUAAZMED <span class="slash">/</span> <span id="crumb">Dashboard</span></span></div>
+   <div class="topbar-left"><button class="mobile-menu" data-action="menu" aria-label="Toggle menu" aria-expanded="false" aria-controls="sidebar">☰</button><span class="breadcrumb">MUAAZMED <span class="slash">/</span> <span id="crumb">Dashboard</span></span></div>
    <div class="topbar-right"><span class="desktop-chip"><span class="live-dot"></span> BUILT FOR WITS GEMP1</span><button class="icon-button" data-action="search" aria-label="Search notes">⌕</button><button class="header-account" data-action="account"><span class="small-avatar" id="top-avatar">G</span><span id="top-identity">Guest mode</span><span class="down-chev">⌄</span></button></div>
   </header>
   <main class="content" id="view" tabindex="-1"><div class="loading-view">Loading the GEMP1 revision space…</div></main>
@@ -80,6 +87,6 @@
 <script defer src="data/advanced-cases-extra.js?v=1"></script>
 <script defer src="data/paper-groups.js?v=1"></script>
 <script defer src="assets/flashcards-ui.js?v=3"></script>
-<script defer src="data/paper2-sprint.js?v=3"></script><script defer src="data/paper2-expansion-a.js?v=1"></script><script defer src="data/paper2-expansion-b.js?v=1"></script><script defer src="data/paper2-expansion-extra.js?v=2"></script><script defer src="data/paper2-expansion.js?v=1"></script><script defer src="data/paper2-extreme-renal.js?v=1"></script><script defer src="data/paper2-extreme-git-a.js?v=1"></script><script defer src="data/paper2-extreme-git-b.js?v=1"></script><script defer src="data/paper2-extreme-msk.js?v=1"></script><script defer src="data/paper2-extreme-haem.js?v=1"></script><script defer src="data/paper2-extreme.js?v=1"></script><script defer src="assets/master-hard.js?v=1"></script><script defer src="assets/app.js?v=18"></script>
+<script defer src="data/paper2-sprint.js?v=3"></script><script defer src="data/paper2-expansion-a.js?v=1"></script><script defer src="data/paper2-expansion-b.js?v=1"></script><script defer src="data/paper2-expansion-extra.js?v=2"></script><script defer src="data/paper2-expansion.js?v=1"></script><script defer src="data/paper2-extreme-renal.js?v=1"></script><script defer src="data/paper2-extreme-git-a.js?v=1"></script><script defer src="data/paper2-extreme-git-b.js?v=1"></script><script defer src="data/paper2-extreme-msk.js?v=1"></script><script defer src="data/paper2-extreme-haem.js?v=1"></script><script defer src="data/paper2-extreme.js?v=1"></script><script defer src="assets/master-hard.js?v=2"></script><script defer src="assets/app.js?v=19"></script>
 </body>
 </html>
