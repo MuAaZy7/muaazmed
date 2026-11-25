@@ -1,30 +1,32 @@
 const cfg=window.MED_BACKEND||{},root=document.getElementById("account"),admin=document.getElementById("admin"),status=document.getElementById("status");
 const $=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const msg=t=>{status.textContent=t||"";if(t)status.scrollIntoView({block:"nearest"});};
+const protectedSite=cfg.protectedHosting===true||location.hostname==="muaazmed.com"||location.hostname==="www.muaazmed.com";
+async function boundedFetch(path,options){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),12000);try{return await fetch(path,{...options,signal:controller.signal});}finally{clearTimeout(timer);}}
 let api,user,member,mode="signin",busy=false,recovery=false,createdCode="";
 const next=()=>{const raw=new URLSearchParams(location.search).get("next");if(!raw||!raw.startsWith("/")||raw.startsWith("//"))return "/";try{const u=new URL(raw,location.origin);return u.origin===location.origin&&!u.pathname.startsWith("/account")&&!u.pathname.startsWith("/_auth")?u.pathname+u.search+u.hash:"/";}catch{return "/";}};
 const rpc=async(name,args={})=>{const {data,error}=await api.rpc(name,args);if(error)throw Error(error.message);return data;};
 const session=async()=>{const {data,error}=await api.auth.getSession();if(error)throw error;return data.session;};
 async function openProtected(target){
- const s=await session();if(!s||!member?.active)throw Error("An active membership is required. Sign in again.");
  msg("Opening your study platform…");
- if(cfg.protectedHosting){
+ const s=await session();if(!s||!member?.active)throw Error("An active membership is required. Sign in again.");
+ if(protectedSite){
    let r;
-   try{r=await fetch("/_auth/session",{method:"POST",credentials:"same-origin",cache:"no-store",redirect:"error",headers:{Authorization:"Bearer "+s.access_token}});}
+   try{r=await boundedFetch("/_auth/session",{method:"POST",credentials:"same-origin",cache:"no-store",redirect:"error",headers:{Authorization:"Bearer "+s.access_token}});}
    catch(e){throw Error("Cloudflare session request failed. Check your connection and retry.");}
    if(!r.ok)throw Error("Cloudflare session failed (HTTP "+r.status+"). Sign out and back in, then retry.");
    // Check the browser actually sends its secure session cookie before navigating.
-   const probe=await fetch("/index.html",{method:"HEAD",credentials:"same-origin",cache:"no-store",redirect:"manual",headers:{Accept:"text/html"}});
+   const probe=await boundedFetch("/assets/main.css?session-check="+Date.now(),{method:"HEAD",credentials:"same-origin",cache:"no-store",redirect:"manual"});
    if(probe.type==="opaqueredirect"||probe.status===302||probe.status===403)
      throw Error("Cloudflare did not accept the browser session. Reopen this page in Safari and sign in again.");
    if(!probe.ok)throw Error("Study site unavailable (HTTP "+probe.status+").");
  }
- location.assign(target==="/"?"/index.html":target);
+ location.assign(target);
 }
 async function openStudy(){await openProtected(next());}
 function showSignIn(){
  admin.hidden=true;
- root.innerHTML='<h1>'+(mode==="signup"?"Create your free account":mode==="reset"?"Reset password":"Welcome back")+'</h1><p class="muted">Use your email address. A valid invitation is required to activate a student membership.</p><form id="login-form"><label for="email">Email address</label><input id="email" required type="email" autocomplete="email">'+(mode==="reset"?"":'<label for="password">Password (at least 8 characters)</label><input id="password" required minlength="8" type="password" autocomplete="'+(mode==="signup"?"new-password":"current-password")+'">')+(mode==="signup"?'<label for="invite">Invitation code</label><input id="invite" required maxlength="100" autocomplete="off" autocapitalize="characters" spellcheck="false"><p class="muted">A valid invitation activates access. The owner can review synced study performance and nickname changes even if you hide your public leaderboard profile.</p>':"")+'<button class="primary" type="submit">'+(mode==="signup"?"Create free account":mode==="reset"?"Send reset email":"Sign in")+'</button></form><button data-action="mode" data-mode="'+(mode==="signup"?"signin":"signup")+'">'+(mode==="signup"?"Already registered? Sign in":"Create free account")+'</button><button data-action="mode" data-mode="reset">Forgot password?</button>'+(cfg.protectedHosting?"":'<p class="muted">Public preview hosting: study files are not private yet.</p><a class="link" href="/">Return to study site</a>');
+ root.innerHTML='<h1>'+(mode==="signup"?"Create your free account":mode==="reset"?"Reset password":"Welcome back")+'</h1><p class="muted">Use your email address. A valid invitation is required to activate a student membership.</p><form id="login-form"><label for="email">Email address</label><input id="email" required type="email" autocomplete="email">'+(mode==="reset"?"":'<label for="password">Password (at least 8 characters)</label><input id="password" required minlength="8" type="password" autocomplete="'+(mode==="signup"?"new-password":"current-password")+'">')+(mode==="signup"?'<label for="invite">Invitation code</label><input id="invite" required maxlength="100" autocomplete="off" autocapitalize="characters" spellcheck="false"><p class="muted">A valid invitation activates access. The owner can review synced study performance and nickname changes even if you hide your public leaderboard profile.</p>':"")+'<button class="primary" type="submit">'+(mode==="signup"?"Create free account":mode==="reset"?"Send reset email":"Sign in")+'</button></form><button data-action="mode" data-mode="'+(mode==="signup"?"signin":"signup")+'">'+(mode==="signup"?"Already registered? Sign in":"Create free account")+'</button><button data-action="mode" data-mode="reset">Forgot password?</button>'+(protectedSite?"":'<p class="muted">Public preview hosting: study files are not private yet.</p><a class="link" href="/">Return to study site</a>');
 }
 function showRecovery(){admin.hidden=true;root.innerHTML='<h1>Choose a new password</h1><form id="recovery-form"><label for="new-password">New password</label><input id="new-password" type="password" minlength="8" autocomplete="new-password" required><button class="primary">Update password</button></form>';}
 async function refresh(){
@@ -37,7 +39,7 @@ async function refresh(){
  sessionStorage.removeItem("med-pending-invite");
  const {data:p,error}=await api.from("profiles").select("nickname,leaderboard_visible").eq("id",user.id).maybeSingle();if(error)throw error;
  root.innerHTML='<h1>Your study account</h1><p>'+esc(user.email)+'</p><p class="muted">'+(member.admin?"Administrator":"Active student membership")+'</p><form id="profile-form"><label for="nickname">Leaderboard display name</label><input id="nickname" minlength="2" maxlength="32" required value="'+esc(p?.nickname||"Student")+'"><label><input id="visible" type="checkbox" '+(p?.leaderboard_visible?"checked":"")+'> Opt in to the study leaderboard (nickname only)</label><p class="muted">The owner can review your account-linked synced study results and nickname history regardless of leaderboard visibility.</p><button>Save profile</button></form><button class="primary" data-action="study">Open study platform →</button><button data-action="logout">Sign out</button><button data-action="board">Leaderboard</button>';
- if(member.admin){admin.hidden=false;await showAdmin();}else admin.hidden=true;
+ if(member.admin){admin.hidden=false;showAdmin().catch(e=>{admin.textContent="Admin data unavailable: "+e.message;});}else admin.hidden=true;
 }
 async function showAdmin(){
  const [invites,members]=await Promise.all([rpc("admin_list_invites"),rpc("admin_list_members")]);
@@ -99,7 +101,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-action]");
  case "mode":mode=b.dataset.mode;showSignIn();break;
  case "study":await openStudy();break;
  case "board":await openProtected("/leaderboard.html");break;
- case "logout":{const {error}=await api.auth.signOut();if(error)throw error;if(cfg.protectedHosting)await fetch("/_auth/logout",{method:"POST"});sessionStorage.removeItem("med-pending-invite");createdCode="";analyticsRows=[];admin.replaceChildren();mode="signin";await refresh();break;}
+ case "logout":{const {error}=await api.auth.signOut();if(error)throw error;if(protectedSite)await fetch("/_auth/logout",{method:"POST"});sessionStorage.removeItem("med-pending-invite");createdCode="";analyticsRows=[];admin.replaceChildren();mode="signin";await refresh();break;}
  case "analytics-refresh":await loadAnalytics();break;
  case "analytics-detail":await studentHistory(b.dataset.id);break;
  case "analytics-export":exportAnalytics();break;
@@ -113,4 +115,4 @@ try{
  // Supabase emits PASSWORD_RECOVERY on a recovery link; keep callback synchronous.
  api.auth.onAuthStateChange(event=>{if(event==="PASSWORD_RECOVERY"){recovery=true;showRecovery();}});
  await refresh();
-}catch(e){root.innerHTML='<h1>Account service unavailable</h1><p class="muted">'+esc(e.message)+'</p>'+(cfg.protectedHosting?"":'<a class="link" href="/">Return to public study site</a>');}
+}catch(e){root.innerHTML='<h1>Account service unavailable</h1><p class="muted">'+esc(e.message)+'</p>'+(protectedSite?"":'<a class="link" href="/">Return to public study site</a>');}
