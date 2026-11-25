@@ -12,7 +12,7 @@ const raw=[...(window.MED_BANK||[]),...(window.MED_EXTRA||[]),...(window.MED_INT
 const names=c=>Array.isArray(c.core)?c.core:(c.core?[c.core]:(maps[c.id]||[]));
 function siteFor(p){
  const allowed=new Set((papers.find(x=>x.paper===p)?.subjects||[]).flatMap(s=>s.conditions.map(tidy))),seen=new Set();
- return raw.filter(c=>{if(seen.has(String(c.id))||!names(c).some(n=>allowed.has(tidy(n))))return false;seen.add(String(c.id));return true;}).map(c=>({...c,id:"site-"+c.id,core:names(c),questions:(c.questions||[]).filter(q=>q&&q.q&&q.answer&&(q.options?.length===4&&/^[ABCD]$/.test(q.answer)||!q.options?.length)).map((q,i)=>({...q,number:q.number||i+1,type:q.options?.length===4?"SBA":"VSAQ",answer:String(q.answer),accepted:q.accepted||[],explain:q.explain||q.point||"Review the expected answer."}))})).filter(c=>c.scenario&&c.questions.length);
+ return raw.filter(c=>{if(seen.has(String(c.id))||(p==="Paper 1"&&c.paper2Only)||!names(c).some(n=>allowed.has(tidy(n))))return false;seen.add(String(c.id));return true;}).map(c=>({...c,id:"site-"+c.id,core:names(c),questions:(c.questions||[]).filter(q=>q&&q.q&&q.answer&&(q.options?.length===4&&/^[ABCD]$/.test(q.answer)||!q.options?.length)).map((q,i)=>({...q,number:q.number||i+1,type:q.options?.length===4?"SBA":"VSAQ",answer:String(q.answer),accepted:q.accepted||[],explain:q.explain||q.point||"Review the expected answer."}))})).filter(c=>c.scenario&&c.questions.length);
 }
 const p2=siteFor("Paper 2"),sprint=p2.filter(c=>c.sprint);
 const groups=(papers.find(x=>x.paper==="Paper 2")?.subjects||[]).map(s=>({name:s.name,cases:[]}));
@@ -20,13 +20,13 @@ for(const c of sprint){const g=groups.find(g=>papers.find(p=>p.paper==="Paper 2"
 const mixed=[];while(groups.some(g=>g.cases.length)){for(const g of groups){if(g.cases.length)mixed.push(g.cases.shift());}}
 const mockIds={mockA:new Set(mixed.slice(0,15).map(c=>c.id)),mockB:new Set(mixed.slice(15,30).map(c=>c.id))};
 const pool={"Paper 1":[...siteFor("Paper 1"),...(window.MED_PDF_PAPER1||[]).filter(c=>c.questions?.length)],"Paper 2":[...sprint,...p2.filter(c=>!c.sprint)],...Object.fromEntries((window.MED_EYE1_PAPERS||[]).map((cases,i)=>["EYE1 Paper "+(i+1),cases]))};
-let db={active:"Paper 2",randomize:false,sessions:{},showAll:false,subject:"All",condition:"All",bank:"sprint",revealed:{},view:"landing"};
+let db={active:"Paper 2",randomize:false,sessions:{},showAll:false,subject:"All",condition:"All",bank:"focused",revealed:{},view:"landing"};
 try{const x=JSON.parse(localStorage.getItem(STORE)||"null");if(x&&typeof x==="object")db={...db,...x,sessions:x.sessions||{},revealed:x.revealed||{}};}catch(_){}
 const params=new URLSearchParams(location.search),requestedPaper=params.get("paper");
 if(requestedPaper&&pool[requestedPaper]&&requestedPaper!==db.active){db.active=requestedPaper;db.subject="All";db.condition="All";db.view="landing";}
 if(!pool[db.active])db.active="Paper 2";
 const requestedCondition=params.get("condition");if(requestedCondition){db.condition=requestedCondition;db.subject="All";db.bank="all";db.view="landing";}
-const requestedBank=params.get("bank");if(["sprint","all","mockA","mockB"].includes(requestedBank)){db.bank=requestedBank;db.subject="All";db.condition="All";db.view="landing";}
+const requestedBank=params.get("bank");if(["focused","expanded","sprint","all","mockA","mockB"].includes(requestedBank)){db.bank=requestedBank;db.subject="All";db.condition=requestedCondition||"All";db.view="landing";}
 const requestedId=params.get("cluster");
 function subjects(){return papers.find(p=>p.paper===db.active)?.subjects||[];}
 function conditions(){return [...new Set(subjects().filter(s=>db.subject==="All"||s.name===db.subject).flatMap(s=>s.conditions))].sort();}
@@ -34,6 +34,8 @@ function filtered(){
  let list=pool[db.active].map((c,i)=>({c,i}));
  if(db.active==="Paper 2"){
    if(db.bank==="sprint")list=list.filter(x=>x.c.sprint);
+   if(db.bank==="expanded")list=list.filter(x=>x.c.expansion);
+   if(db.bank==="focused")list=list.filter(x=>x.c.sprint||x.c.expansion).sort((a,b)=>{const ai=a.c.sprint?Number(a.c.id.replace("site-",""))-5000:Number(a.c.id.replace("site-",""))-6000;const bi=b.c.sprint?Number(b.c.id.replace("site-",""))-5000:Number(b.c.id.replace("site-",""))-6000;return ai-bi||Number(!!a.c.expansion)-Number(!!b.c.expansion);});
    if(db.bank==="mockA"||db.bank==="mockB")list=list.filter(x=>mockIds[db.bank].has(x.c.id)).sort((a,b)=>mixed.indexOf(a.c)-mixed.indexOf(b.c));
  }
  const allowed=conditions().map(tidy);
@@ -53,13 +55,13 @@ function statCard(p){const s=session(),count=filtered().length,done=s?score(s):{
 function landing(){
  const p=db.active,s=session(),cases=filtered(),visible=db.showAll?cases:cases.slice(0,42);
  const paperTabs=Object.keys(pool).map(name=>'<button data-act="paper" data-paper="'+esc(name)+'" class="'+(p===name?"selected":"")+'>'+esc(name)+'</button>').join("");
- const paperDescription=p.startsWith("EYE1 Paper")?"Complete uploaded GEMP1 EYE1 practice PDF: 16 case clusters, 120 questions, BCMH/CVS/RESP, original short-answer targets and explanations.":p==="Paper 1"?"Original site cases plus uploaded Paper 1 practice questions. Uploaded cases without condition tags remain under All.":"49 high-yield condition clusters, the existing bank, and two 120-question untimed mock-study sets.";
+ const paperDescription=p.startsWith("EYE1 Paper")?"Complete uploaded GEMP1 EYE1 practice PDF: 16 case clusters, 120 questions, BCMH/CVS/RESP, original short-answer targets and explanations.":p==="Paper 1"?"Original site cases plus uploaded Paper 1 practice questions. Uploaded cases without condition tags remain under All.":"98 focused clusters across all 49 conditions: quick sprint plus additional applied cases, with variable question counts. The full bank and two 120-question mock-study sets are also available.";
  root.innerHTML='<div class="cp-hero"><a class="cp-back" href="index.html#practice">← All practice questions</a><div class="cp-overline">GEMP1 · EXAM PREP</div><h1>Case cluster study mode</h1><p>Work through complete clinical cases without being told the diagnosis. Choose a paper, answer each SBA or VSAQ, and get instant feedback before moving on.</p></div>'+
  '<div class="cp-tabs" role="group" aria-label="Select practice paper">'+paperTabs+'</div>'+
  '<div class="cp-stats">'+statCard(p)+'</div>'+
- '<section class="cp-config"><div><h2>'+esc(p)+' · Case clusters</h2><p>'+esc(paperDescription)+'</p><div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:15px">'+(p==="Paper 2"?'<label>Question set '+choiceSelect("cp-bank",[["sprint","High-yield sprint"],["all","Full bank"],["mockA","Mock A · study"],["mockB","Mock B · study"]],db.bank)+'</label>':"")+(subjects().length?'<label>Subject '+choiceSelect("cp-subject",[["All","All subjects"],...subjects().map(s=>[s.name,s.name])],db.subject)+'</label><label>Core condition '+choiceSelect("cp-condition",[["All","All conditions"],...conditions().map(n=>[n,n])],db.condition)+'</label>':"")+'</div><p>'+cases.length+' matching clusters · '+cases.reduce((n,x)=>n+x.c.questions.length,0)+' questions</p><label class="cp-toggle"><input type="checkbox" id="cp-shuffle" '+(db.randomize?"checked":"")+'> Randomise cluster order</label></div><div class="cp-actions"><button class="cp-primary" data-act="start">Start continuous study →</button>'+(s?'<button class="cp-secondary" data-act="continue">Continue session ('+score(s).answered+' answered)</button>':"")+'</div></section>'+
+ '<section class="cp-config"><div><h2>'+esc(p)+' · Case clusters</h2><p>'+esc(paperDescription)+'</p><div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:15px">'+(p==="Paper 2"?'<label>Question set '+choiceSelect("cp-bank",[["focused","Focused bank · all 98 clusters"],["expanded","New applied cases"],["sprint","Quick sprint"],["all","Full bank"],["mockA","Mock A · study"],["mockB","Mock B · study"]],db.bank)+'</label>':"")+(subjects().length?'<label>Subject '+choiceSelect("cp-subject",[["All","All subjects"],...subjects().map(s=>[s.name,s.name])],db.subject)+'</label><label>Core condition '+choiceSelect("cp-condition",[["All","All conditions"],...conditions().map(n=>[n,n])],db.condition)+'</label>':"")+'</div><p>'+cases.length+' matching clusters · '+cases.reduce((n,x)=>n+x.c.questions.length,0)+' questions</p><label class="cp-toggle"><input type="checkbox" id="cp-shuffle" '+(db.randomize?"checked":"")+'> Randomise cluster order</label></div><div class="cp-actions"><button class="cp-primary" data-act="start">Start continuous study →</button>'+(s?'<button class="cp-secondary" data-act="continue">Continue session ('+score(s).answered+' answered)</button>':"")+'</div></section>'+
  '<div class="cp-list-head"><h2>Choose any cluster</h2><span>Condition titles hidden unless you choose to reveal them</span></div>'+
- '<div class="cp-grid">'+visible.map(({c,i},j)=>'<article class="cp-cluster"><span class="cp-cluster-number">CLUSTER '+String(j+1).padStart(2,"0")+'</span><strong>'+esc(db.revealed[c.id]?titleOf(c):"Clinical case")+'</strong><small>'+c.questions.length+' questions · SBA + short answers'+(c.sprint?" · Sprint":"")+'</small><div class="cp-actions"><button class="cp-secondary" data-act="reveal" data-id="'+esc(c.id)+'">'+(db.revealed[c.id]?"Hide condition":"Reveal condition")+'</button><button class="cp-primary" data-act="open" data-idx="'+i+'">Practise →</button></div></article>').join("")+'</div>'+
+ '<div class="cp-grid">'+visible.map(({c,i},j)=>'<article class="cp-cluster"><span class="cp-cluster-number">CLUSTER '+String(j+1).padStart(2,"0")+'</span><strong>'+esc(db.revealed[c.id]?titleOf(c):"Clinical case")+'</strong><small>'+c.questions.length+' questions · SBA + short answers'+(c.sprint?" · Sprint":c.expansion?" · Applied":"")+'</small><div class="cp-actions"><button class="cp-secondary" data-act="reveal" data-id="'+esc(c.id)+'">'+(db.revealed[c.id]?"Hide condition":"Reveal condition")+'</button><button class="cp-primary" data-act="open" data-idx="'+i+'">Practise →</button></div></article>').join("")+'</div>'+
  (cases.length>visible.length?'<button class="cp-secondary cp-more" data-act="more">Show all '+cases.length+' clusters</button>':"")+
  '<p class="cp-note">Study-paper groupings are for revision, not a guarantee of Wits examination allocation. All questions are educational practice, not official Wits past-paper questions. Progress is saved on this device.</p>';
 }
@@ -87,7 +89,7 @@ function play(){
 }
 function render(){if(!root)return;if(db.view==="play")play();else landing();}
 root.addEventListener("click",e=>{const target=e.target.closest("[data-act]");if(!target)return;const act=target.dataset.act;e.preventDefault();
- if(act==="paper"){db.active=target.dataset.paper;db.view="landing";db.showAll=false;db.subject="All";db.condition="All";db.bank="sprint";if(window.history?.replaceState&&window.location){const params=new URLSearchParams(window.location.search);params.set("paper",db.active);window.history.replaceState(null,"",window.location.pathname+"?"+params.toString());}save();render();}
+ if(act==="paper"){db.active=target.dataset.paper;db.view="landing";db.showAll=false;db.subject="All";db.condition="All";db.bank="focused";if(window.history?.replaceState&&window.location){const params=new URLSearchParams(window.location.search);params.set("paper",db.active);window.history.replaceState(null,"",window.location.pathname+"?"+params.toString());}save();render();}
  if(act==="start"){db.view="play";makeSession(target.dataset.random==="yes"?true:db.randomize);}
  if(act==="continue"){db.view="play";save();render();}
  if(act==="home"){db.view="landing";save();render();}
@@ -101,7 +103,7 @@ root.addEventListener("click",e=>{const target=e.target.closest("[data-act]");if
  if(act==="next")next(1);
  if(act==="selfmark"){const s=session(),k=current(s).key;if(s.answers[k]){s.answers[k].correct=true;s.answers[k].selfMarked=true;save();render();}}
 });
-root.addEventListener("change",e=>{if(["cp-bank","cp-subject","cp-condition"].includes(e.target.id)){if(e.target.id==="cp-bank")db.bank=e.target.value;if(e.target.id==="cp-subject"){db.subject=e.target.value;db.condition="All";}if(e.target.id==="cp-condition")db.condition=e.target.value;db.showAll=false;save();render();return;}if(e.target.id==="cp-shuffle"){db.randomize=e.target.checked;save();}if(e.target.id==="cp-jump"){const s=session(),n=Number(e.target.value);if(s&&Number.isInteger(n)&&n>=0&&n<s.order.length){s.pos=n;s.q=0;save();render();}}});
+root.addEventListener("change",e=>{if(["cp-bank","cp-subject","cp-condition"].includes(e.target.id)){if(e.target.id==="cp-bank")db.bank=e.target.value;if(e.target.id==="cp-subject"){db.subject=e.target.value;db.condition="All";}if(e.target.id==="cp-condition")db.condition=e.target.value;db.showAll=false;if(window.history?.replaceState){const p=new URLSearchParams(location.search);p.set("paper",db.active);p.delete("cluster");p.delete("condition");p.delete("bank");window.history.replaceState(null,"",location.pathname+"?"+p.toString());}save();render();return;}if(e.target.id==="cp-shuffle"){db.randomize=e.target.checked;save();}if(e.target.id==="cp-jump"){const s=session(),n=Number(e.target.value);if(s&&Number.isInteger(n)&&n>=0&&n<s.order.length){s.pos=n;s.q=0;save();render();}}});
 root.addEventListener("submit",e=>{if(e.target.id==="cp-vsaq-form"){e.preventDefault();answerRecord(document.getElementById("cp-vsaq")?.value);}});
 window.addEventListener("keydown",e=>{
  if(db.view!=="play"||e.defaultPrevented||e.repeat||e.isComposing||e.altKey||e.ctrlKey||e.metaKey||e.shiftKey)return;
