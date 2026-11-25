@@ -1,0 +1,8 @@
+{
+ "name":"muaazmed-private",
+ "main":"hosting/worker.mjs",
+ "compatibility_date":"2026-11-25",
+ "workers_dev":true,
+ "assets":{"directory":"./private-dist","binding":"ASSETS","run_worker_first":true,"html_handling":"none","not_found_handling":"none"},
+ "vars":{"SUPABASE_URL":"","SUPABASE_PUBLISHABLE_KEY":""}
+}
