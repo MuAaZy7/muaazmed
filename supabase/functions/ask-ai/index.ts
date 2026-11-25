@@ -59,6 +59,10 @@ Deno.serve(async (request: Request) => {
   const { data: { user }, error: userError } = await caller.auth.getUser(jwt);
   if (userError || !user) return result(401, { error: "Session expired. Please sign in again." }, origin);
 
+  const membershipClient = createClient(url, publicKey, {auth:{persistSession:false},global:{headers:{Authorization:"Bearer "+jwt}}});
+  const membership = await membershipClient.rpc("member_status");
+  if (membership.error || !membership.data?.active) return result(403, {error:"Active invitation membership required."}, origin);
+
   let payload: Record<string, unknown>;
   try {
     if (Number(request.headers.get("content-length") || 0) > 12000)

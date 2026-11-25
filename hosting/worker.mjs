@@ -34,5 +34,5 @@ export default {async fetch(req,env){
   if(req.headers.get("Sec-Fetch-Dest")==="document"||req.headers.get("Accept")?.includes("text/html"))return redirectLogin(req);
   return response("Membership required",403);
  }
- return asset(req,env);
+ return asset(p==="/"?new Request(new URL("/index.html",req.url),req):req,env);
 }};

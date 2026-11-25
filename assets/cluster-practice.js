@@ -68,10 +68,27 @@ function landing(){
 function answerRecord(value){const s=session();if(!s||s.finished)return;const {q,key}=current(s);if(!q||Object.hasOwn(s.answers,key))return;const given=String(value||"").trim();if(!given)return;const target=tidy(q.answer);const aliases=[q.answer,...(q.accepted||[])].map(tidy);const correct=q.type==="SBA"?given===q.answer:aliases.includes(tidy(given));s.answers[key]={given,correct,time:Date.now()};save();render();}
 function skipCase(){const s=session();if(!s||s.finished)return;if(s.pos>=s.order.length-1){s.finished=true;}else{s.pos++;s.q=0;}save();render();}
 function next(delta,skip=false){const s=session();if(!s||s.finished)return;const item=current(s);if(!item.q)return;if(delta>0&&!skip&&!Object.hasOwn(s.answers,item.key))return;let pos=s.pos,q=s.q+delta;if(q>=pool[db.active][s.order[pos]].questions.length){pos++;q=0;}if(q<0){pos--;if(pos>=0)q=pool[db.active][s.order[pos]].questions.length-1;}if(pos<0)return;if(pos>=s.order.length){s.finished=true;save();render();return;}s.pos=pos;s.q=q;save();render();}
+let scoreUploading=false;
+async function publishStudyScore(){
+ const s=session(),a=s?score(s):null,bank=db.bank;
+ if(!s||!s.finished||db.active!=="Paper 2"||!["mockA","mockB"].includes(bank)||a.answered!==120||s.order.reduce((n,i)=>n+pool[db.active][i].questions.length,0)!==120||scoreUploading)return;
+ const el=document.getElementById("cp-board-status"),cfg=window.MED_BACKEND||{};
+ if(!cfg.url||!(cfg.publishableKey||cfg.anonKey)){if(el)el.textContent="Leaderboard backend not connected.";return;}
+ scoreUploading=true;try{
+  const {createClient}=await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");const api=createClient(cfg.url,cfg.publishableKey||cfg.anonKey);
+  const {data}=await api.auth.getSession();if(!data.session)throw Error("Sign in to save your completed mock.");
+  const m=await api.rpc("member_status");if(m.error||!m.data?.active)throw Error("Active membership required.");
+  if(s.uploadOwner&&s.uploadOwner!==data.session.user.id)throw Error("This mock was saved under another account.");
+  s.uploadOwner=data.session.user.id;s.attemptId=s.attemptId||crypto.randomUUID();save();
+  const {error}=await api.from("study_results").insert({user_id:data.session.user.id,attempt_id:s.attemptId,paper:bank==="mockA"?"A":"B",correct:a.correct,answered:a.answered});
+  if(error&&error.code!=="23505")throw error;if(el)el.textContent="Completed mock saved. Leaderboard display depends on your opt-in setting.";
+ }catch(e){if(el)el.textContent=e.message||"Unable to save mock.";}finally{scoreUploading=false;}
+}
 function review(){
  const s=session(),a=score(s),missed=[];for(const idx of s.order){const c=pool[db.active][idx];c.questions.forEach((q,i)=>{const x=s.answers[c.id+":"+i];if(x&&!x.correct)missed.push({c,idx,q,i,x});});}
  root.innerHTML='<div class="cp-hero"><a href="#" class="cp-back" data-act="home">← Back to clusters</a><div class="cp-overline">'+esc(db.active)+'</div><h1>Practice complete</h1><p>Review the explanations or start a fresh shuffled run. Unanswered questions (including skipped questions and clusters) are not scored.</p></div><div class="cp-stats"><div class="cp-stat"><strong>'+a.correct+'</strong><span>Correct</span></div><div class="cp-stat"><strong>'+a.answered+'</strong><span>Answered</span></div><div class="cp-stat"><strong>'+Math.round(a.correct/Math.max(1,a.answered)*100)+'%</strong><span>Accuracy</span></div><div class="cp-stat"><strong>'+missed.length+'</strong><span>Incorrect · to revise</span></div><div class="cp-stat"><strong>'+(s.order.reduce((n,i)=>n+pool[db.active][i].questions.length,0)-a.answered)+'</strong><span>Unanswered / skipped</span></div></div><div class="cp-actions"><button class="cp-primary" data-act="start" data-random="yes">Practise again · shuffled</button><button class="cp-secondary" data-act="home">Back to clusters</button></div>'+
- '<section class="cp-review"><h2>Questions to revisit</h2>'+(missed.length?missed.map(x=>'<article><strong>'+esc(x.q.q)+'</strong><p>Your answer: '+esc(x.x.given)+'</p><p>Correct answer: <b>'+esc(correctLabel(x.q))+'</b></p><p>'+esc(x.q.explain)+'</p></article>').join(""):'<p>No incorrect answers in this session.</p>')+'</section>';
+ '<section class="cp-review"><h2>Questions to revisit</h2>'+(missed.length?missed.map(x=>'<article><strong>'+esc(x.q.q)+'</strong><p>Your answer: '+esc(x.x.given)+'</p><p>Correct answer: <b>'+esc(correctLabel(x.q))+'</b></p><p>'+esc(x.q.explain)+'</p></article>').join(""):'<p>No incorrect answers in this session.</p>')+'</section>'+((db.active==="Paper 2"&&["mockA","mockB"].includes(db.bank))?'<p id="cp-board-status" role="status">'+(a.answered===120?"Saving completed mock…":"Only complete 120-question mock attempts count on the leaderboard.")+'</p><a class="cp-secondary" href="/leaderboard.html">Community leaderboard ↗</a>':"");
+ publishStudyScore();
 }
 function correctLabel(q){return q.type==="SBA"&&q.options?' '+q.answer+". "+q.options["ABCD".indexOf(q.answer)]:q.answer;}
 function play(){

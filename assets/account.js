@@ -24,7 +24,7 @@ async function refresh(){
  const pending=sessionStorage.getItem("med-pending-invite");if(pending)$("invite").value=pending;return;}
  sessionStorage.removeItem("med-pending-invite");
  const {data:p,error}=await api.from("profiles").select("nickname,leaderboard_visible").eq("id",user.id).maybeSingle();if(error)throw error;
- root.innerHTML='<h1>Your study account</h1><p>'+esc(user.email)+'</p><p class="muted">'+(member.admin?"Administrator":"Active student membership")+'</p><form id="profile-form"><label for="nickname">Leaderboard display name</label><input id="nickname" minlength="2" maxlength="32" required value="'+esc(p?.nickname||"Student")+'"><label><input id="visible" type="checkbox" '+(p?.leaderboard_visible?"checked":"")+'> Opt in to the study leaderboard (nickname only)</label><button>Save profile</button></form><button class="primary" data-action="study">Open study platform →</button><button data-action="logout">Sign out</button><a class="link" href="/leaderboard.html">Leaderboard</a>';
+ root.innerHTML='<h1>Your study account</h1><p>'+esc(user.email)+'</p><p class="muted">'+(member.admin?"Administrator":"Active student membership")+'</p><form id="profile-form"><label for="nickname">Leaderboard display name</label><input id="nickname" minlength="2" maxlength="32" required value="'+esc(p?.nickname||"Student")+'"><label><input id="visible" type="checkbox" '+(p?.leaderboard_visible?"checked":"")+'> Opt in to the study leaderboard (nickname only)</label><button>Save profile</button></form><button class="primary" data-action="study">Open study platform →</button><button data-action="logout">Sign out</button><button data-action="board">Leaderboard</button>';
  if(member.admin){admin.hidden=false;await showAdmin();}else admin.hidden=true;
 }
 async function showAdmin(){
@@ -47,6 +47,7 @@ document.addEventListener("submit",e=>{e.preventDefault();const id=e.target.id;p
 document.addEventListener("click",e=>{const b=e.target.closest("[data-action]");if(!b)return;perform(async()=>{switch(b.dataset.action){
  case "mode":mode=b.dataset.mode;showSignIn();break;
  case "study":await openStudy();break;
+ case "board":{const s=await session();if(cfg.protectedHosting){const r=await fetch("/_auth/session",{method:"POST",headers:{Authorization:"Bearer "+s.access_token}});if(!r.ok)throw Error("Could not establish protected session.");}location.assign("/leaderboard.html");break;}
  case "logout":{const {error}=await api.auth.signOut();if(error)throw error;if(cfg.protectedHosting)await fetch("/_auth/logout",{method:"POST"});sessionStorage.removeItem("med-pending-invite");createdCode="";mode="signin";await refresh();break;}
  case "copy":await navigator.clipboard.writeText(createdCode);msg("Code copied.");break;
  case "revoke":await rpc("admin_revoke_invite",{p_id:b.dataset.id});await showAdmin();break;

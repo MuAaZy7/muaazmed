@@ -114,7 +114,7 @@ function noteCard(n,subject){
  return '<article class="condition-card"><div class="card-top">'+badge(subject||tagsFor(n.name)[0]?.subject||"Core","blue")+'<button class="icon-star '+(saved?"saved":"")+'" data-action="save" data-name="'+esc(n.name)+'" aria-label="Bookmark condition">'+(saved?"★":"☆")+'</button></div><h3>'+esc(n.name)+'</h3><p>'+clip(n.presentation,148)+'</p><div class="card-footer"><span>'+(learned?'<span class="is-learned">✓ Revised</span>':'<span>Core note</span>')+'</span><a class="card-cta" href="'+noteHash(n.name)+'">Open notes ↗</a></div></article>';
 }
 function renderNotes(){
- $("view").innerHTML=head("GEMP1 CORE CONDITIONS","66 core conditions · 2 study papers","Grouped by Paper 1 (BCMH, CVS, Respiratory) and Paper 2 (Renal, GIT, MSK, Haem/Onc), following your study split. Cross-listed conditions appear under every relevant subject.",'<button class="btn" data-action="export">Export progress ↗</button>')+
+ $("view").innerHTML=head("GEMP1 CORE CONDITIONS","66 core conditions · 2 study papers","Grouped by Paper 1 (BCMH, CVS, Respiratory) and Paper 2 (Renal, GIT, MSK, Haem/Onc), following your study split. Cross-listed conditions appear under every relevant subject.",'<a class="btn btn-primary" href="/leaderboard.html">Community leaderboard ↗</a><button class="btn" data-action="export">Export progress ↗</button>')+
  '<div class="study-exam-notice">Study organisation only — the official Wits information guide does not confirm a fixed subject allocation per exam paper.</div>'+
  '<div class="study-filter-toolbar"><label class="search-field"><span>⌕</span><input id="notes-search" type="search" placeholder="Search core conditions…" value="'+esc(searchText)+'" aria-label="Search conditions"></label>'+
  '<label>Study paper<select id="notes-paper" class="select">'+selectOptions(notePaper,noteSubject)+'</select></label>'+
@@ -565,7 +565,7 @@ function showAccount(mode="signin"){
  h+='<div class="auth-status" id="auth-status"></div></section></div>';$("modal-root").innerHTML=h;
  if(authUser&&supabase)supabase.from("profiles").select("leaderboard_visible").eq("id",authUser.id).maybeSingle().then(({data})=>{if($("visible-board"))$("visible-board").checked=Boolean(data?.leaderboard_visible)});
 }
-async function ensureAuth(){if(supabase)return supabase;if(!CONFIG.url||!(CONFIG.publishableKey||CONFIG.anonKey))return null;try{const m=await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");supabase=m.createClient(CONFIG.url,CONFIG.publishableKey||CONFIG.anonKey);const {data}=await supabase.auth.getUser();authUser=data?.user||null;authReady=true;supabase.auth.onAuthStateChange((_event,session)=>{authUser=session?.user||null;setIdentity();if(authUser)loadCloudProgress()});if(authUser)await loadCloudProgress();loadLeaderboard();render();return supabase}catch(e){console.warn("Accounts unavailable:",e);authReady=false;return null}}
+async function ensureAuth(){if(supabase)return supabase;if(!CONFIG.url||!(CONFIG.publishableKey||CONFIG.anonKey))return null;try{const m=await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");supabase=m.createClient(CONFIG.url,CONFIG.publishableKey||CONFIG.anonKey);const {data}=await supabase.auth.getUser();authUser=data?.user||null;authReady=true;supabase.auth.onAuthStateChange((_event,session)=>{authUser=session?.user||null;setIdentity();if(authUser)setTimeout(()=>loadCloudProgress(),0)});if(authUser)await loadCloudProgress();loadLeaderboard();render();return supabase}catch(e){console.warn("Accounts unavailable:",e);authReady=false;return null}}
 async function authGo(mode){const status=$("auth-status");const email=String($("auth-email")?.value||"").trim(),password=String($("auth-password")?.value||"");if(!email.includes("@")||password.length<8){status.textContent="Enter a valid email and password of at least 8 characters.";return}const api=await ensureAuth();if(!api){status.textContent="Account backend is not connected or could not load.";return}status.textContent="Connecting…";
  try{const resp=mode==="signup"?await api.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname+"#home"}}):await api.auth.signInWithPassword({email,password});if(resp.error)throw resp.error;status.style.color="#16866d";status.textContent=mode==="signup"?"Account created. Check your email if confirmation is enabled.":"Signed in successfully.";if(resp.data?.session){authUser=resp.data.user;await loadCloudProgress();setTimeout(closeModal,650);render()}}catch(e){status.textContent=e.message||"Authentication failed."}}
 async function signOut(){if(supabase)await supabase.auth.signOut();authUser=null;state=defaultState();save();closeModal();render();toast("Signed out; guest session reset on this device")}
@@ -589,7 +589,7 @@ document.addEventListener("click",e=>{
  if(["search","menu","account","export","load-board"].includes(action)){
   if(action==="search"){goto("#notes");setTimeout(()=>$("notes-search")?.focus(),80)}
   if(action==="menu")$("sidebar").classList.toggle("open");
-  if(action==="account")showAccount();
+  if(action==="account"){location.href="/account.html";return;}
   if(action==="export")exportProgress();
   if(action==="load-board")loadLeaderboard();
   return}
