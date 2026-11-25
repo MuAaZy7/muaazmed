@@ -64,11 +64,11 @@ function landing(){
  '<p class="cp-note">Study-paper groupings are for revision, not a guarantee of Wits examination allocation. All questions are educational practice, not official Wits past-paper questions. Progress is saved on this device.</p>';
 }
 function answerRecord(value){const s=session();if(!s||s.finished)return;const {q,key}=current(s);if(!q||Object.hasOwn(s.answers,key))return;const given=String(value||"").trim();if(!given)return;const target=tidy(q.answer);const aliases=[q.answer,...(q.accepted||[])].map(tidy);const correct=q.type==="SBA"?given===q.answer:aliases.includes(tidy(given));s.answers[key]={given,correct,time:Date.now()};save();render();}
-function skipCase(){const s=session();if(!s)return;if(s.pos>=s.order.length-1){s.finished=true;}else{s.pos++;s.q=0;}save();render();}
-function next(delta){const s=session();if(!s)return;const item=current(s);if(delta>0&&!Object.hasOwn(s.answers,item.key))return;let pos=s.pos,q=s.q+delta;if(q>=pool[db.active][s.order[pos]].questions.length){pos++;q=0;}if(q<0){pos--;if(pos>=0)q=pool[db.active][s.order[pos]].questions.length-1;}if(pos<0)return;if(pos>=s.order.length){s.finished=true;save();render();return;}s.pos=pos;s.q=q;save();render();}
+function skipCase(){const s=session();if(!s||s.finished)return;if(s.pos>=s.order.length-1){s.finished=true;}else{s.pos++;s.q=0;}save();render();}
+function next(delta,skip=false){const s=session();if(!s||s.finished)return;const item=current(s);if(!item.q)return;if(delta>0&&!skip&&!Object.hasOwn(s.answers,item.key))return;let pos=s.pos,q=s.q+delta;if(q>=pool[db.active][s.order[pos]].questions.length){pos++;q=0;}if(q<0){pos--;if(pos>=0)q=pool[db.active][s.order[pos]].questions.length-1;}if(pos<0)return;if(pos>=s.order.length){s.finished=true;save();render();return;}s.pos=pos;s.q=q;save();render();}
 function review(){
  const s=session(),a=score(s),missed=[];for(const idx of s.order){const c=pool[db.active][idx];c.questions.forEach((q,i)=>{const x=s.answers[c.id+":"+i];if(x&&!x.correct)missed.push({c,idx,q,i,x});});}
- root.innerHTML='<div class="cp-hero"><a href="#" class="cp-back" data-act="home">← Back to clusters</a><div class="cp-overline">'+esc(db.active)+'</div><h1>Practice complete</h1><p>Review the explanations or start a fresh shuffled run. Questions left unanswered by skipping cases are not scored.</p></div><div class="cp-stats"><div class="cp-stat"><strong>'+a.correct+'</strong><span>Correct</span></div><div class="cp-stat"><strong>'+a.answered+'</strong><span>Answered</span></div><div class="cp-stat"><strong>'+Math.round(a.correct/Math.max(1,a.answered)*100)+'%</strong><span>Accuracy</span></div><div class="cp-stat"><strong>'+missed.length+'</strong><span>To revise</span></div></div><div class="cp-actions"><button class="cp-primary" data-act="start" data-random="yes">Practise again · shuffled</button><button class="cp-secondary" data-act="home">Back to clusters</button></div>'+
+ root.innerHTML='<div class="cp-hero"><a href="#" class="cp-back" data-act="home">← Back to clusters</a><div class="cp-overline">'+esc(db.active)+'</div><h1>Practice complete</h1><p>Review the explanations or start a fresh shuffled run. Unanswered questions (including skipped questions and clusters) are not scored.</p></div><div class="cp-stats"><div class="cp-stat"><strong>'+a.correct+'</strong><span>Correct</span></div><div class="cp-stat"><strong>'+a.answered+'</strong><span>Answered</span></div><div class="cp-stat"><strong>'+Math.round(a.correct/Math.max(1,a.answered)*100)+'%</strong><span>Accuracy</span></div><div class="cp-stat"><strong>'+missed.length+'</strong><span>Incorrect · to revise</span></div><div class="cp-stat"><strong>'+(s.order.reduce((n,i)=>n+pool[db.active][i].questions.length,0)-a.answered)+'</strong><span>Unanswered / skipped</span></div></div><div class="cp-actions"><button class="cp-primary" data-act="start" data-random="yes">Practise again · shuffled</button><button class="cp-secondary" data-act="home">Back to clusters</button></div>'+
  '<section class="cp-review"><h2>Questions to revisit</h2>'+(missed.length?missed.map(x=>'<article><strong>'+esc(x.q.q)+'</strong><p>Your answer: '+esc(x.x.given)+'</p><p>Correct answer: <b>'+esc(correctLabel(x.q))+'</b></p><p>'+esc(x.q.explain)+'</p></article>').join(""):'<p>No incorrect answers in this session.</p>')+'</section>';
 }
 function correctLabel(q){return q.type==="SBA"&&q.options?' '+q.answer+". "+q.options["ABCD".indexOf(q.answer)]:q.answer;}
@@ -83,7 +83,7 @@ function play(){
  root.innerHTML='<div class="cp-play"><div class="cp-play-top"><button class="cp-back" data-act="home">← Clusters</button><span class="cp-pill">'+esc(db.active)+'</span><label class="cp-jump-label">Jump to case <select id="cp-jump" aria-label="Jump to cluster">'+s.order.map((_,i)=>'<option value="'+i+'" '+(i===s.pos?"selected":"")+'>Case '+(i+1)+'</option>').join("")+'</select></label><span class="cp-saving">✓ Saved on this device</span></div>'+
  '<div class="cp-progress"><div><b>'+currLabel+'</b><span>Question '+(s.q+1)+' of '+caseQuestions+' · '+t.answered+' attempted · '+t.correct+' correct</span></div><div class="cp-progress-bar"><span style="width:'+Math.round((s.pos+s.q/caseQuestions)/totalCases*100)+'%"></span></div></div>'+
  '<article class="cp-case"><div class="cp-case-kicker">CLINICAL SCENARIO</div><button class="cp-secondary" data-act="reveal" data-id="'+esc(c.id)+'">'+(db.revealed[c.id]?"Hide condition":"Reveal condition")+'</button>'+(db.revealed[c.id]?'<p><b>'+esc(titleOf(c))+'</b></p>':"")+'<div class="cp-scenario">'+esc(c.scenario||"")+'</div><div class="cp-qkicker">QUESTION '+(s.q+1)+' · '+(q.type==="VSAQ"?"VERY SHORT ANSWER":q.isData?"DATA INTERPRETATION":"SINGLE BEST ANSWER")+'</div><h2>'+esc(q.q)+'</h2><div class="cp-options">'+choices+'</div>'+fb+
- '<div class="cp-next"><button class="cp-secondary" data-act="prev" '+(s.pos===0&&s.q===0?"disabled":"")+'>← Previous</button><button class="cp-secondary" data-act="skip">Skip case ↷</button><button class="cp-primary" data-act="next" '+(!a?"disabled":"")+'>'+(atLast?"Finish practice →":s.q===caseQuestions-1?"Next cluster →":"Next question →")+'</button></div></article></div>';
+ '<div class="cp-next"><button class="cp-secondary" data-act="prev" aria-keyshortcuts="P ArrowLeft" '+(s.pos===0&&s.q===0?"disabled":"")+'>← Previous</button><button class="cp-secondary" data-act="skip-question" aria-keyshortcuts="S">Skip question</button><button class="cp-secondary" data-act="skip" aria-keyshortcuts="K">Skip cluster ↷</button><button class="cp-primary" data-act="next" aria-keyshortcuts="Enter N ArrowRight" '+(!a?"disabled":"")+'>'+(atLast?"Finish practice →":s.q===caseQuestions-1?"Next cluster →":"Next question →")+'</button></div><p class="cp-note"><b>Keyboard:</b> A–D / 1–4 answer · Enter / N / → next · S skip question · K skip cluster · P / ← previous</p></article></div>';
 }
 function render(){if(!root)return;if(db.view==="play")play();else landing();}
 root.addEventListener("click",e=>{const target=e.target.closest("[data-act]");if(!target)return;const act=target.dataset.act;e.preventDefault();
@@ -96,12 +96,29 @@ root.addEventListener("click",e=>{const target=e.target.closest("[data-act]");if
  if(act==="open"){const idx=+target.dataset.idx;const order=filtered().map(x=>x.i),pos=order.indexOf(idx);if(pos<0)return;db.sessions[sessionKey()]={order,pos,q:0,answers:{},finished:false,created:Date.now(),randomize:false};db.view="play";save();render();}
  if(act==="choose")answerRecord(target.dataset.value);
  if(act==="prev")next(-1);
+ if(act==="skip-question")next(1,true);
  if(act==="skip")skipCase();
  if(act==="next")next(1);
  if(act==="selfmark"){const s=session(),k=current(s).key;if(s.answers[k]){s.answers[k].correct=true;s.answers[k].selfMarked=true;save();render();}}
 });
 root.addEventListener("change",e=>{if(["cp-bank","cp-subject","cp-condition"].includes(e.target.id)){if(e.target.id==="cp-bank")db.bank=e.target.value;if(e.target.id==="cp-subject"){db.subject=e.target.value;db.condition="All";}if(e.target.id==="cp-condition")db.condition=e.target.value;db.showAll=false;save();render();return;}if(e.target.id==="cp-shuffle"){db.randomize=e.target.checked;save();}if(e.target.id==="cp-jump"){const s=session(),n=Number(e.target.value);if(s&&Number.isInteger(n)&&n>=0&&n<s.order.length){s.pos=n;s.q=0;save();render();}}});
 root.addEventListener("submit",e=>{if(e.target.id==="cp-vsaq-form"){e.preventDefault();answerRecord(document.getElementById("cp-vsaq")?.value);}});
+window.addEventListener("keydown",e=>{
+ if(db.view!=="play"||e.defaultPrevented||e.repeat||e.isComposing||e.altKey||e.ctrlKey||e.metaKey||e.shiftKey)return;
+ if(e.target?.isContentEditable||["INPUT","TEXTAREA","SELECT"].includes(e.target?.tagName))return;
+ const s=session();if(!s||s.finished)return;
+ const {q,key}=current(s);if(!q)return;
+ const k=e.key.toLowerCase();
+ const answer=/^[abcd]$/.test(k)?k.toUpperCase():/^[1-4]$/.test(k)?"ABCD"[Number(k)-1]:null;
+ if(answer&&q.type==="SBA"&&!Object.hasOwn(s.answers,key)){e.preventDefault();answerRecord(answer);return;}
+ if(k==="s"){e.preventDefault();next(1,true);return;}
+ if(k==="k"){e.preventDefault();skipCase();return;}
+ if(k==="p"||k==="arrowleft"){e.preventDefault();next(-1);return;}
+ if((k==="n"||k==="arrowright"||k==="enter")&&Object.hasOwn(s.answers,key)){
+  if(k==="enter"&&["BUTTON","A","SUMMARY"].includes(e.target?.tagName))return;
+  e.preventDefault();next(1);
+ }
+});
 document.querySelectorAll("[data-cp-mobile-menu]").forEach(b=>b.addEventListener("click",()=>document.querySelector(".sidebar")?.classList.toggle("cp-open")));
 if(requestedId){const index=pool[db.active].findIndex(c=>c.id==="site-"+requestedId);if(index>=0){const order=filtered().map(x=>x.i);const pos=order.indexOf(index);if(pos>=0){db.sessions[sessionKey()]={order,pos,q:0,answers:{},finished:false,created:Date.now(),randomize:false};db.view="play";save();}}if(window.history?.replaceState){params.delete("cluster");params.delete("condition");window.history.replaceState(null,"",location.pathname+"?"+params.toString());}}
 render();

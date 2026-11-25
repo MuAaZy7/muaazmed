@@ -356,8 +356,8 @@ function renderFlow(paper){
  '<h3>'+esc(q.q)+'</h3>'+options+flowFeedback(c,q,record,paper)+
  (record&&q.type==="VSAQ"&&!record.selfReviewed?'<p class="flow-gate">Compare the model answer and self-mark to continue.</p>':"")+
  '<div class="flow-navigation"><button class="btn" data-action="flow-prev" data-paper="'+esc(paper)+'" '+(!prev?"disabled":"")+'>← Previous</button>'+
- '<button class="btn" data-action="flow-skip" data-paper="'+esc(paper)+'">Skip cluster ↷</button><button class="btn btn-primary flow-next" data-action="flow-next" data-paper="'+esc(paper)+'" '+(!canGo?"disabled":"")+'>'+
- (canGo?esc(nextLabel):q.type==="SBA"?"Select an answer to continue":"Check and mark to continue")+'</button></div>'+
+ '<button class="btn" data-action="flow-skip-question" data-paper="'+esc(paper)+'" aria-keyshortcuts="S">Skip question</button><button class="btn" data-action="flow-skip" data-paper="'+esc(paper)+'" aria-keyshortcuts="K">Skip cluster ↷</button><button class="btn btn-primary flow-next" data-action="flow-next" data-paper="'+esc(paper)+'" '+(!canGo?"disabled":"")+'>'+
+ (canGo?esc(nextLabel):q.type==="SBA"?"Select an answer to continue":"Check and mark to continue")+'</button></div><p class="tiny-note"><b>Keyboard:</b> A–D / 1–4 answer · Enter / N / → next · S skip question · K skip cluster · P / ← previous</p>'+
  (record?'<div class="flow-followup"><a href="'+noteHash(c.coreNames[0]||"")+'">Review the relevant core note ↗</a>'+
  '<button class="btn btn-sm" data-action="flow-retry-question" data-paper="'+esc(paper)+'">Try this question again</button>'+
  '<button class="btn btn-soft btn-sm" data-action="ask-ai" data-case="'+c.id+'" data-index="'+item.questionIndex+'">✦ Ask AI tutor</button></div>':"")+
@@ -370,11 +370,11 @@ function renderFlowFinish(paper,pack,sess){
   byCore.set(name,(byCore.get(name)||0)+1)}
  const review=wrong.slice(0,25).map(({item,i})=>'<button class="flow-review-line" data-action="flow-jump" data-paper="'+esc(paper)+'" data-index="'+i+'"><span>✕</span>'+
   '<span><strong>'+esc(item.c.title)+'</strong><small>Question '+(item.questionIndex+1)+' · '+esc(item.subject)+'</small></span><span>Review →</span></button>').join("");
- $("view").innerHTML=head("CONTINUOUS PRACTICE","You've completed "+paper,"All questions in this revision flow have been displayed. Review your weak areas, or restart when you want a fresh attempt.","")+
+ $("view").innerHTML=head("CONTINUOUS PRACTICE","You've completed "+paper,"You reached the end of this revision flow. Unanswered questions are not graded; revisit weak areas or start a fresh attempt.","")+
  '<div class="flow-finish-stats"><div><strong>'+progress.total+'</strong><span>Questions in this paper flow</span></div>'+
  '<div><strong>'+progress.correct+' / '+progress.graded+'</strong><span>Correct / graded</span></div>'+
  '<div><strong>'+progress.percent+'%</strong><span>Practice accuracy</span></div>'+
- '<div><strong>'+wrong.length+'</strong><span>To review</span></div></div>'+
+ '<div><strong>'+wrong.length+'</strong><span>Incorrect · to review</span></div><div><strong>'+(progress.total-progress.answered)+'</strong><span>Unanswered / skipped</span></div></div>'+
  '<div class="flow-finish-actions"><button class="btn btn-primary" data-action="flow-restart" data-paper="'+esc(paper)+'">Start a new attempt →</button>'+
  '<a class="btn" href="#flow">Choose the other paper</a></div>'+
  (review?'<section class="flow-mistakes"><h2>Go back over your mistakes</h2><p>Review the explanation, then retry the question.</p>'+review+'</section>':
@@ -384,11 +384,11 @@ function flowCurrent(paper){
  const pack=FLOW_QUEUES.get(paper),sess=flowGetSession(paper);
  return pack&&sess&&sess.index<pack.items.length?{pack,sess,item:pack.items[sess.index]}:null;
 }
-function flowAdvance(paper,delta){
+function flowAdvance(paper,delta,skip=false){
  const current=flowCurrent(paper);
  if(!current)return;
  const {pack,sess,item}=current;
- if(delta>0&&!flowCanContinue(item,sess)){toast("Answer and review the question first");return}
+ if(delta>0&&!skip&&!flowCanContinue(item,sess)){toast("Answer and review the question first");return}
  sess.index=Math.max(0,Math.min(pack.items.length,sess.index+delta));
  sess.finished=sess.index===pack.items.length;
  sess.updated=Date.now();save();render();
@@ -405,6 +405,11 @@ function flowRecordAnswer(paper,answer,isVsaq=false){
  if(typeof requestAnimationFrame==="function")requestAnimationFrame(()=>$("answer-feedback")?.scrollIntoView({behavior:"smooth",block:"nearest"}));
 }
 
+function advanceCase(c,idx,skipCluster=false){
+ if(!skipCluster&&idx<c.questions.length-1){goto(caseHash(c.id,idx+1));return;}
+ const filtered=CASES.filter(practiceFilter),pos=filtered.findIndex(x=>String(x.id)===String(c.id));
+ if(pos>=0&&pos+1<filtered.length)goto(caseHash(filtered[pos+1].id,0));else goto("#practice");
+}
 function renderCase(id,idx){
  const c=CASES.find(x=>String(x.id)===String(id));if(!c){goto("#practice");return}
  idx=Math.max(0,Math.min(c.questions.length-1,Number(idx)||0));const q=c.questions[idx],key=qrKey(c,q),saved=state.caseAnswers[key],flag=state.flags[key];
@@ -419,7 +424,8 @@ function renderCase(id,idx){
  '<div class="scenario"><div class="overline">INTEGRATED PRACTICE · '+esc(caseLabel(c))+'</div><details><summary>Reveal cluster title</summary><h2>'+esc(c.title)+'</h2></details><p>'+esc(c.scenario)+'</p></div>'+
  '<div class="question-panel"><div class="q-progress"><span>QUESTION '+(idx+1)+' OF '+c.questions.length+'</span>'+badge(q.type==="VSAQ"?"VSAQ · 1–3 words":q.isData?"Results interpretation":"SBA · 4 options","blue")+'</div><h2>'+esc(q.q)+'</h2>'+
  opts+practiceFeedback(c,q,saved)+
- '<div class="question-foot"><button class="btn btn-sm" data-action="flag" data-key="'+esc(key)+'">'+(flag?"⚑ Flagged":"⚐ Flag to revise")+'</button><div class="page-actions"><button class="btn btn-sm" data-action="case-jump" data-case="'+c.id+'" data-index="'+(idx-1)+'" '+(idx===0?"disabled":"")+'>← Previous</button><button class="btn btn-primary btn-sm" data-action="case-jump" data-case="'+c.id+'" data-index="'+(idx+1)+'" '+(idx===c.questions.length-1?"disabled":"")+'>Next question →</button></div></div>'+
+ '<div class="question-foot"><button class="btn btn-sm" data-action="flag" data-key="'+esc(key)+'">'+(flag?"⚑ Flagged":"⚐ Flag to revise")+'</button><div class="page-actions"><button class="btn btn-sm" data-action="case-jump" data-case="'+c.id+'" data-index="'+(idx-1)+'" '+(idx===0?"disabled":"")+'>← Previous</button><button class="btn btn-sm" data-action="case-skip-question" data-case="'+c.id+'" data-index="'+idx+'" aria-keyshortcuts="S">Skip question</button><button class="btn btn-sm" data-action="case-skip-cluster" data-case="'+c.id+'" data-index="'+idx+'" aria-keyshortcuts="K">Skip cluster ↷</button><button class="btn btn-primary btn-sm" data-action="case-next" data-case="'+c.id+'" data-index="'+idx+'" aria-keyshortcuts="Enter N ArrowRight" '+(!saved||(q.type==="VSAQ"&&!saved.selfReviewed)?"disabled":"")+'>'+(idx===c.questions.length-1?"Next cluster →":"Next question →")+'</button></div></div>'+
+ '<p class="tiny-note"><b>Keyboard:</b> A–D / 1–4 answer · Enter / N / → next · S skip question · K skip cluster · P / ← previous</p>'+
  (saved?'<div class="practice-followup"><a href="'+noteHash(c.coreNames[0]||"")+'">Review related core notes ↗</a><button class="btn btn-sm" data-action="practice-retry" data-case="'+c.id+'" data-index="'+idx+'">Try again</button><button class="btn btn-soft btn-sm" data-action="ask-ai" data-case="'+c.id+'" data-index="'+idx+'">✦ Ask AI tutor</button></div>':'')+
  '</div></div><aside class="q-side"><div class="aside-box"><h3>Learning progress</h3><p class="tiny-note">Green = correct; red = needs review. Tap any question to revisit it.</p><div class="q-palette">'+palette+'</div>'+
  '<div class="progress-track"><span style="width:'+Math.round(100*stats.attempted/stats.total)+'%"></span></div><p class="tiny-note">'+stats.attempted+'/'+stats.total+' attempted · '+stats.correct+' correct · '+stats.wrong+' to review</p>'+
@@ -600,6 +606,7 @@ document.addEventListener("click",e=>{
    if(!confirm("Restart "+paper+" continuous practice? This resets its current flow answers and position but keeps your individual case work."))return;
    state.flowSessions[paper]={index:0,answers:{},started:Date.now(),updated:Date.now(),finished:false};save();goto("#flow/"+encodeURIComponent(paper));return}
  if(action==="flow-skip"){const p=el.dataset.paper,cur=flowCurrent(p),pack=FLOW_QUEUES.get(p);if(cur&&pack){let i=cur.sess.index+1;while(i<pack.items.length&&pack.items[i].c.id===cur.item.c.id)i++;cur.sess.index=i;cur.sess.finished=i===pack.items.length;save();render();}return;}
+ if(action==="flow-skip-question"){flowAdvance(el.dataset.paper,1,true);return}
  if(action==="flow-next"){flowAdvance(el.dataset.paper,1);return}
  if(action==="flow-prev"){flowAdvance(el.dataset.paper,-1);return}
  if(action==="flow-answer"){const paper=el.dataset.paper,current=flowCurrent(paper);
@@ -631,6 +638,7 @@ document.addEventListener("click",e=>{
  if(action==="mark-practice-vsaq"){const c=CASES.find(x=>String(x.id)===el.dataset.case),q=c?.questions.find(x=>String(x.number)===el.dataset.number);if(!q)return;const a=state.caseAnswers[qrKey(c,q)];if(!a)return;a.correct=el.dataset.correct==="1";a.selfReviewed=true;state.practiceHistory.push({caseId:c.id,question:q.number,correct:a.correct,answer:a.answer,time:Date.now()});save();render();return}
  if(action==="practice-retry"){const c=CASES.find(x=>String(x.id)===el.dataset.case),q=c?.questions[Number(el.dataset.index)];if(!q)return;delete state.caseAnswers[qrKey(c,q)];save();render();return}
  if(action==="practice-reset-case"){const c=CASES.find(x=>String(x.id)===el.dataset.case);if(!c)return;for(const q of c.questions)delete state.caseAnswers[qrKey(c,q)];save();goto(caseHash(c.id,0));return}
+ if(["case-next","case-skip-question","case-skip-cluster"].includes(action)){const c=CASES.find(x=>String(x.id)===el.dataset.case),idx=Number(el.dataset.index),q=c?.questions[idx];if(!q)return;const a=state.caseAnswers[qrKey(c,q)];if(action==="case-next"&&(!a||(q.type==="VSAQ"&&!a.selfReviewed)))return;advanceCase(c,idx,action==="case-skip-cluster");return;}
  if(action==="case-jump"){const c=CASES.find(x=>String(x.id)===el.dataset.case);if(!c)return;const idx=Number(el.dataset.index);if(idx<0||idx>=c.questions.length)return;goto(caseHash(c.id,idx));return}
  if(action==="flag"){state.flags[el.dataset.key]=!state.flags[el.dataset.key];save();render();return}
  if(action==="mock-start"){startMock(el.dataset.paper);return}
@@ -664,19 +672,31 @@ document.addEventListener("change",e=>{if(Flash.handleChange(e.target))return;if
 window.addEventListener("hashchange",()=>{searchText="";$("sidebar")?.classList.remove("open");window.scrollTo({top:0,behavior:"auto"});render()});
 window.addEventListener("keydown",e=>{
  if(Flash.handleKey(e))return;
- const tag=e.target?.tagName;
- if(location.hash.startsWith("#flow/")&&!["INPUT","TEXTAREA","SELECT"].includes(tag)&&!e.altKey&&!e.ctrlKey&&!e.metaKey){
-  const paper=decodeURIComponent(location.hash.slice(6)),current=flowCurrent(paper);
-  if(current){
-   if(current.item.q.type==="SBA"&&["1","2","3","4"].includes(e.key)&&!current.sess.answers[flowItemKey(current.item)]){
-    e.preventDefault();flowRecordAnswer(paper,"ABCD"[Number(e.key)-1]);return;
-   }
-   if((e.key==="Enter"||e.key==="ArrowRight")&&flowCanContinue(current.item,current.sess)){
-    e.preventDefault();flowAdvance(paper,1);return;
-   }
+ if(e.key==="Escape"){closeModal();return;}
+ if(e.defaultPrevented||e.repeat||e.isComposing||e.altKey||e.ctrlKey||e.metaKey||e.shiftKey)return;
+ if($("modal-root")?.childElementCount||$("drawer-root")?.childElementCount)return;
+ const flow=location.hash.startsWith("#flow/"),individual=location.hash.startsWith("#case/");
+ if(!flow&&!individual)return;
+ const tag=e.target?.tagName,k=e.key.toLowerCase();
+ if(e.target?.isContentEditable||["INPUT","TEXTAREA","SELECT"].includes(tag)){
+  if(k==="enter"&&["flow-free","case-free"].includes(e.target?.id)){
+   const submit=$("view")?.querySelector('[data-action="'+(flow?"flow-submit-vsaq":"answer-vsaq")+'"]');
+   if(submit&&!submit.disabled){e.preventDefault();submit.click();}
   }
+  return;
  }
- if(e.key==="Escape")closeModal();
+ if(k==="enter"&&["BUTTON","A","SUMMARY"].includes(tag))return;
+ const root=$("view");
+ const press=selector=>{const b=root?.querySelector(selector);if(b&&!b.disabled){e.preventDefault();b.click();}};
+ const letter=/^[abcd]$/.test(k)?k.toUpperCase():/^[1-4]$/.test(k)?"ABCD"[Number(k)-1]:null;
+ if(letter){press('[data-action="'+(flow?"flow-answer":"answer-case")+'"][data-letter="'+letter+'"]');return;}
+ if(k==="s"){press('[data-action="'+(flow?"flow-skip-question":"case-skip-question")+'"]');return;}
+ if(k==="k"){press('[data-action="'+(flow?"flow-skip":"case-skip-cluster")+'"]');return;}
+ if(k==="n"||k==="arrowright"||k==="enter"){press('[data-action="'+(flow?"flow-next":"case-next")+'"]');return;}
+ if(k==="p"||k==="arrowleft"){
+  if(flow)press('[data-action="flow-prev"]');
+  else{const b=root?.querySelector(".question-foot [data-action='case-jump']");if(b&&!b.disabled){e.preventDefault();b.click();}}
+ }
 });
 window.addEventListener("beforeunload",()=>{clearInterval(currentTimer)});
 if(EYE_NOTES.length!==66||CASES.length!==219||totalQuestions!==1877||SLIDES.length!==72||Flash.cards.length!==1254){console.warn("MuaazMed content validation:",{notes:EYE_NOTES.length,cases:CASES.length,questions:totalQuestions,slides:SLIDES.length})}
