@@ -241,7 +241,7 @@ function practiceFeedback(c,q,saved){
    Case IDs are de-duplicated within each paper even if a condition crosses subjects.
    The user's study split determines grouping, not official exam allocation. */
 function isHardCase(c){return !!(c.masterHard||c.extreme||c.expansion||/challenge|hard|advanced|expert|extreme/i.test(String(c.difficulty||"")));}
-const FLOW_LEVELS={all:"All",easy:"Easy / core",hard:"Hard / advanced",master:"Master bank (Hard)"};
+const FLOW_LEVELS={all:"Full archive · all clusters",easy:"Easy archive · all foundational cases",essential:"Easy · essential cases only",hard:"Hard · clinical reasoning",master:"Master bank · 117 clusters"};
 const flowKey=(paper,level="all")=>level==="all"?paper:paper+"|"+level;
 function flowLabel(key){const [paper,level="all"]=key.split("|");return level==="all"?paper:paper+" · "+FLOW_LEVELS[level];}
 function buildFlowQueues(){
@@ -269,7 +269,10 @@ function buildFlowQueues(){
   if(p.paper==="Paper 2")for(const c of CASES.filter(c=>c.expansion&&!c.masterHard&&!c.extreme)){const subject=p.subjects.find(s=>s.conditions.some(n=>c.coreNames.some(x=>norm(x)===norm(n))))?.name||"Integrated";add(c,subject);}
   // Keep the original all-question sequence as an unchanged prefix for saved sessions.
   if(p.paper==="Paper 2")for(const c of CASES.filter(c=>c.extreme||c.masterHard))add(c,c.module||"Integrated");
-  const decks={all:ordered,easy:ordered.filter(x=>!isHardCase(x.c)),hard:ordered.filter(x=>isHardCase(x.c))};
+  const easy=ordered.filter(x=>!isHardCase(x.c));
+  // Keep the old easy/all queues untouched for existing saved positions. The new essential deck removes repetitive easy cases by retaining one per core.
+  const covered=new Set(),essential=easy.filter(({c,subject})=>{const keys=(c.coreNames.length?c.coreNames:[subject+":"+c.id]).map(n=>norm(n));if(keys.every(k=>covered.has(k)))return false;keys.forEach(k=>covered.add(k));return true;});
+  const decks={all:ordered,easy,essential,hard:ordered.filter(x=>isHardCase(x.c))};
   if(p.paper==="Paper 2")decks.master=ordered.filter(x=>x.c.masterHard);
   for(const [level,deck] of Object.entries(decks)){
    const items=deck.flatMap((item,ci)=>item.c.questions.map((q,qi)=>({c:item.c,q,subject:item.subject,caseIndex:ci,questionIndex:qi})));
@@ -301,14 +304,14 @@ function flowCounts(paper){
   started:!!sess,finished:!!sess?.finished&&sess.index>=pack.items.length};
 }
 function flowPaperCard(p){
- const levels=p.paper==="Paper 2"?["all","easy","hard","master"]:["all","easy","hard"];
- const selected=state.flowDifficulty?.[p.paper];const level=levels.includes(selected)?selected:"all";const key=flowKey(p.paper,level);
+ const levels=p.paper==="Paper 2"?["hard","essential","master","all","easy"]:["hard","essential","all","easy"];
+ const selected=state.flowDifficulty?.[p.paper];const level=levels.includes(selected)?selected:"hard";const key=flowKey(p.paper,level);
  const pack=FLOW_QUEUES.get(key),progress=flowCounts(key);
  const pct=Math.round(100*progress.answered/Math.max(1,progress.total));
  const subjectList=p.subjects.map(s=>s.name).join(" · ");
  return '<article class="flow-paper-card"><div class="flow-card-top"><span class="flow-paper-label">'+esc(p.paper)+'</span>'+
  badge(progress.finished?"Completed":progress.answered?"In progress":"Ready",progress.finished?"green":"blue")+'</div>'+
- '<h2>'+esc(subjectList)+'</h2><p>One question at a time with immediate feedback. Difficulty reflects authored question-bank labels, not measured performance.</p>'+
+ '<h2>'+esc(subjectList)+'</h2><p>One question at a time with immediate feedback. Hard is the recommended starting point. Easy essentials keeps one foundational case per core where available; the archives retain older cases and saved sessions. Difficulty is editorial, not measured performance.</p>'+
  '<label>Difficulty <select class="select" data-flow-filter="'+esc(p.paper)+'" aria-label="'+esc(p.paper)+' difficulty">'+levels.map(v=>'<option value="'+v+'"'+(v===level?' selected':'')+'>'+esc(FLOW_LEVELS[v])+'</option>').join("")+'</select></label>'+
  '<div class="flow-paper-metrics"><div><strong>'+pack.cases.length+'</strong><span>Distinct cases</span></div><div><strong>'+pack.items.length+'</strong><span>Questions</span></div><div><strong>'+progress.graded+'</strong><span>Graded</span></div></div>'+
  '<div class="flow-progress-track"><span style="width:'+pct+'%"></span></div>'+
@@ -319,7 +322,7 @@ function flowPaperCard(p){
 function renderFlowLanding(){
  $("view").innerHTML=head("CONTINUOUS PRACTICE","Keep going. One case after another.","Work through linked clinical case questions without returning to the case library. Choose Paper 1 or Paper 2; every answer reveals its explanation immediately.","")+
  '<div class="flow-intro"><strong>How it works:</strong> Choose a paper, answer, read the explanation, then press <b>Next</b>. At the last question of a case, Next opens the following case automatically. You can leave and resume without losing your place. No timer and no compulsory submission.</div>'+
- '<div class="notice"><a class="btn btn-primary" href="cluster-practice.html?paper=Paper%202&amp;bank=sprint">Quick continuous sprint · Paper 2 →</a> <a class="btn" href="cluster-practice.html?paper=Paper%201">Paper 1 →</a></div><div class="flow-paper-grid">'+PAPER_GROUPS.map(flowPaperCard).join("")+'</div>'+
+ '<div class="notice"><a class="btn btn-primary" href="cluster-practice.html?paper=Paper%202&amp;bank=master">New Paper 2 master bank →</a> <a class="btn" href="cluster-practice.html?paper=Paper%201">Paper 1 →</a></div><div class="flow-paper-grid">'+PAPER_GROUPS.map(flowPaperCard).join("")+'</div>'+
  '<div class="flow-intro"><strong>Paper 2 master bank:</strong> '+(window.MED_MASTER_HARD?.length?window.MED_MASTER_HARD.length+' clusters / 936 questions available'+(window.MED_MASTER_REMOTE?' for all students.':' on this browser.'):'117 clusters / 936 questions are ready for import.')+(window.MED_MASTER_REMOTE?'':' <label for="master-hard-file">Import the master bank JSON (this device):</label> <input type="file" id="master-hard-file" accept=".json,application/json" aria-describedby="master-hard-status"><p id="master-hard-status" role="status" class="tiny-note">Import only the original master bank file. Existing progress is retained.</p>')+'</div>'+
  '<p class="flow-qualifier">The Paper 1 / Paper 2 subject split is a student revision organisation, not an official Wits promise about what will appear on either paper. Seven older extension cases without a suitable subject mapping remain in individual-case practice.</p>'+
  '<a class="btn btn-soft" href="#practice">Browse individual cases instead ↗</a>';
@@ -570,7 +573,7 @@ function exportProgress(){const data={format:"muaazmed-progress-v5",exported:new
 function closeModal(){$("modal-root").innerHTML="";$("drawer-root").innerHTML=""}
 function showAccount(mode="signin"){
  const configured=Boolean(CONFIG.url&&(CONFIG.publishableKey||CONFIG.anonKey));
- let h='<div class="modal-wrap" data-action="close-modal"><section class="modal" role="dialog" aria-modal="true" aria-label="Student account" data-no-close="1"><button class="close-x" data-action="close-modal" aria-label="Close dialog">×</button><div class="overline">STUDENT PROFILE</div><h2>'+(authUser?"Your study account":"Study now, sign in when ready")+'</h2>';
+ let h='<div class="modal-wrap" data-action="close-modal"><section class="modal" role="dialog" aria-modal="true" aria-label="Student account" data-no-close="1"><button class="close-x" data-action="close-modal" aria-label="Close dialog">×</button><div class="overline">STUDENT PROFILE</div><h2>'+(authUser?"Your study account":"Study now, sign in when ready")+'</h2>'+(!authUser?'<p class="community-motto">By the people, for the people.</p>':"");
  if(authUser){h+='<p>You are signed in as <strong>'+esc(authUser.email||"student")+'</strong>. Your saved progress synchronises while online.</p><label for="nickname">Display name</label><input id="nickname" class="input" maxlength="32" value="'+esc(authUser.user_metadata?.nickname||authUser.email?.split("@")[0]||"Student")+'"><div class="page-actions" style="margin-top:15px"><label style="display:flex;align-items:center;gap:7px;margin:0;font-size:11px"><input type="checkbox" id="visible-board"> Show my mock score on the opt-in leaderboard</label></div><div class="modal-actions"><button class="btn btn-primary" data-action="save-profile">Save profile</button><button class="btn" data-action="signout">Sign out</button></div>'}
  else{h+='<p>No login is needed to study. Guest progress stays on this device. Optional accounts provide cross-device sync after the backend is connected.</p><label for="guest-nickname">Guest display name</label><input id="guest-nickname" class="input" maxlength="32" value="'+esc(state.guestName)+'"><button class="btn btn-soft btn-sm" style="margin-top:8px" data-action="guest-save">Save guest name</button>';
   if(configured){h+='<div class="rule"></div><div class="overline">'+(mode==="signup"?"CREATE ACCOUNT":"EXISTING ACCOUNT")+'</div><label for="auth-email">Email</label><input id="auth-email" class="input" type="email" autocomplete="email"><label for="auth-password">Password</label><input id="auth-password" class="input" type="password" autocomplete="'+(mode==="signup"?"new-password":"current-password")+'" minlength="8"><div class="modal-actions"><button class="btn btn-primary" data-action="auth-go" data-mode="'+mode+'">'+(mode==="signup"?"Create account":"Sign in")+'</button><button class="btn" data-action="auth-mode" data-mode="'+(mode==="signup"?"signin":"signup")+'">'+(mode==="signup"?"Already have an account? Sign in":"Create account")+'</button></div>'}
@@ -602,7 +605,7 @@ document.addEventListener("click",e=>{
  if(action==="close-modal"){if(e.target.closest("[data-no-close]")&&!e.target.closest(".close-x"))return;closeModal();return}
  if(["search","menu","account","export","load-board"].includes(action)){
   if(action==="search"){goto("#notes");setTimeout(()=>$("notes-search")?.focus(),80)}
-  if(action==="menu")$("sidebar").classList.toggle("open");
+  if(action==="menu"){const open=$("sidebar").classList.toggle("open");el.setAttribute("aria-expanded",String(open));}
   if(action==="account"){location.href="/account.html";return;}
   if(action==="export")exportProgress();
   if(action==="load-board")loadLeaderboard();
@@ -719,4 +722,6 @@ window.addEventListener("beforeunload",()=>{clearInterval(currentTimer)});
 if(EYE_NOTES.length!==66||SLIDES.length!==72||Flash.cards.length!==1254){console.warn("MuaazMed content validation:",{notes:EYE_NOTES.length,cases:CASES.length,questions:totalQuestions,slides:SLIDES.length})}
 if(!location.hash)history.replaceState(null,"","#home");
 setIdentity();render();ensureAuth();
+document.addEventListener("click",e=>{const side=$("sidebar"),button=document.querySelector('[data-action="menu"]');if(side?.classList.contains("open")&&!e.target.closest('[data-action="menu"]')&&(!side.contains(e.target)||e.target.closest(".nav-stack a"))){side.classList.remove("open");button?.setAttribute("aria-expanded","false");}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){const side=$("sidebar");if(side?.classList.contains("open")){side.classList.remove("open");document.querySelector('[data-action="menu"]')?.setAttribute("aria-expanded","false");}}});
 })();
