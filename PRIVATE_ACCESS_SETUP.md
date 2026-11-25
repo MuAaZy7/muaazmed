@@ -5,7 +5,7 @@ The code is ready, but the database, email sender and private hosting require ow
 
 ## 1. Supabase
 1. Create a project at https://supabase.com/dashboard. Keep the database password private.
-2. SQL Editor: execute `supabase/schema.sql`, then `supabase/invite-membership.sql`, in that order. The second file adds invitation membership, private tables, atomic redemption and member-only row-level policies.
+2. SQL Editor: execute `supabase/install.sql` (contains both `supabase/schema.sql` and `supabase/invite-membership.sql` in order). The second file adds invitation membership, private tables, atomic redemption and member-only row-level policies.
 3. Authentication: enable email/password and email confirmation; configure Site URL `https://muaazmed.com`, allow the exact callback `https://muaazmed.com/account.html` (and staging worker URL while testing). Configure custom SMTP for student verification/reset emails. Built-in SMTP only sends to project team members.
 4. Use the project URL and public publishable key (NOT the service role/secret key) in `backend-config.js` for preview, and in `wrangler.jsonc` vars for protected hosting. Do not paste secrets in GitHub.
 5. Register your own owner account with email, confirm it, then bootstrap its admin membership in SQL Editor using the commented query at the bottom of `supabase/invite-membership.sql`. The verified owner account gets admin controls without an invitation. The signup form requires a nonempty code field; for owner bootstrap use a placeholder and ignore activation until SQL bootstrap is complete. Do not create a default public admin password or code.
