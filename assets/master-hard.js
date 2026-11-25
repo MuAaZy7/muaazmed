@@ -23,7 +23,7 @@ function local(){try{return validate(JSON.parse(localStorage.getItem(KEY)||"null
 window.MED_MASTER_READY=(async()=>{
  let rows=[];
  try{
-  const response=await fetch("data/paper2-master-hard.json",{cache:"no-cache",signal:AbortSignal.timeout(5000)});
+  const response=await fetch("data/paper2-master-hard.json",{cache:"no-cache",...(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?{signal:AbortSignal.timeout(5000)}:{})});
   if(response.ok)rows=validate(await response.json());
  }catch(_){}
  window.MED_MASTER_REMOTE=rows.length>0;
