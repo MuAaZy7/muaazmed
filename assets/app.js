@@ -274,7 +274,7 @@ function buildFlowQueues(){
   const easy=ordered.filter(x=>!isHardCase(x.c));
   // Keep the old easy/all queues untouched for existing saved positions. The new essential deck removes repetitive easy cases by retaining one per core.
   const covered=new Set(),essential=easy.filter(({c,subject})=>{const keys=(c.coreNames.length?c.coreNames:[subject+":"+c.id]).map(n=>norm(n));if(keys.every(k=>covered.has(k)))return false;keys.forEach(k=>covered.add(k));return true;});
-  const decks={all:ordered,easy,essential,hard:ordered.filter(x=>isHardCase(x.c))};
+  const decks={all:ordered,easy,essential,hard:window.MED_UNIQUE_HARD(ordered.filter(x=>isHardCase(x.c)))};
   if(p.paper==="Paper 2"){decks.master=ordered.filter(x=>x.c.masterHard);decks.kakamed=ordered.filter(x=>x.c.kakamed);}
   for(const [level,deck] of Object.entries(decks)){
    const items=deck.flatMap((item,ci)=>item.c.questions.map((q,qi)=>({c:item.c,q,subject:item.subject,caseIndex:ci,questionIndex:qi})));
@@ -286,10 +286,11 @@ function buildFlowQueues(){
 const FLOW_QUEUES=buildFlowQueues();
 function flowGetSession(paper){
  if(!FLOW_QUEUES.has(paper))return null;
- let sess=state.flowSessions[paper];
+ const storageKey=paper.endsWith("|hard")?paper+"|unique-v1":paper;
+ let sess=state.flowSessions[storageKey];
  if(!sess||typeof sess!=="object"||!sess.answers||typeof sess.answers!=="object"){
   sess={index:0,answers:{},started:Date.now(),updated:Date.now(),finished:false};
-  state.flowSessions[paper]=sess;save();
+  state.flowSessions[storageKey]=sess;save();
  }
  if(!Number.isInteger(sess.index)||sess.index<0)sess.index=0;
  const max=FLOW_QUEUES.get(paper).items.length;
@@ -298,7 +299,7 @@ function flowGetSession(paper){
  return sess;
 }
 function flowCounts(paper){
- const pack=FLOW_QUEUES.get(paper),sess=state.flowSessions?.[paper];
+ const pack=FLOW_QUEUES.get(paper),sess=state.flowSessions?.[paper.endsWith("|hard")?paper+"|unique-v1":paper];
  const records=Object.values(sess?.answers||{}),graded=records.filter(a=>typeof a.correct==="boolean");
  return {paper,cases:pack.cases.length,total:pack.items.length,answered:records.length,
   graded:graded.length,correct:graded.filter(a=>a.correct).length,wrong:graded.filter(a=>!a.correct).length,
@@ -625,7 +626,7 @@ document.addEventListener("click",e=>{
  if(action==="flow-start"){const paper=el.dataset.paper;if(!FLOW_QUEUES.has(paper))return;flowGetSession(paper);goto("#flow/"+encodeURIComponent(paper));return}
  if(action==="flow-restart"){const paper=el.dataset.paper;if(!FLOW_QUEUES.has(paper))return;
    if(!confirm("Restart "+paper+" continuous practice? This resets its current flow answers and position but keeps your individual case work."))return;
-   state.flowSessions[paper]={index:0,answers:{},started:Date.now(),updated:Date.now(),finished:false};save();goto("#flow/"+encodeURIComponent(paper));return}
+   state.flowSessions[paper.endsWith("|hard")?paper+"|unique-v1":paper]={index:0,answers:{},started:Date.now(),updated:Date.now(),finished:false};save();goto("#flow/"+encodeURIComponent(paper));return}
  if(action==="flow-skip"){const p=el.dataset.paper,cur=flowCurrent(p),pack=FLOW_QUEUES.get(p);if(cur&&pack){let i=cur.sess.index+1;while(i<pack.items.length&&pack.items[i].c.id===cur.item.c.id)i++;cur.sess.index=i;cur.sess.finished=i===pack.items.length;save();render();}return;}
  if(action==="flow-skip-question"){flowAdvance(el.dataset.paper,1,true);return}
  if(action==="flow-next"){flowAdvance(el.dataset.paper,1);return}

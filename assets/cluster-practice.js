@@ -21,6 +21,9 @@ for(const c of sprint){const g=groups.find(g=>papers.find(p=>p.paper==="Paper 2"
 const mixed=[];while(groups.some(g=>g.cases.length)){for(const g of groups){if(g.cases.length)mixed.push(g.cases.shift());}}
 const mockIds={mockA:new Set(mixed.slice(0,15).map(c=>c.id)),mockB:new Set(mixed.slice(15,30).map(c=>c.id))};
 const pool={"Paper 1":[...siteFor("Paper 1"),...(window.MED_PDF_PAPER1||[]).filter(c=>c.questions?.length)],"Paper 2":[...sprint,...p2.filter(c=>!c.sprint)],...Object.fromEntries((window.MED_EYE1_PAPERS||[]).map((cases,i)=>["EYE1 Paper "+(i+1),cases]))};
+const hardStart=pool["Paper 2"].length;
+const uniqueHard=window.MED_UNIQUE_HARD(pool["Paper 2"].filter(c=>c.masterHard||c.extreme||c.expansion||(!c.sprint&&/challenge|hard|advanced|expert|extreme/i.test(String(c.difficulty||"")))).map(c=>({c}))).map(x=>x.c);
+pool["Paper 2"].push(...uniqueHard);
 const IEYA2="IEYA2 Practice";
 const studentCases=window.MED_IEYA2_STUDENT||[];
 if(studentCases.length)pool[IEYA2]=studentCases;
@@ -36,6 +39,7 @@ function subjects(){if(db.active===IEYA2)return ["Renal","GIT","MSK","Haem/Onc"]
 function conditions(){return [...new Set(subjects().filter(s=>db.subject==="All"||s.name===db.subject).flatMap(s=>s.conditions))].sort();}
 function filtered(){
  let list=pool[db.active].map((c,i)=>({c,i}));
+ if(db.active==="Paper 2")list=list.filter(x=>db.bank==="hard"?x.i>=hardStart:x.i<hardStart);
  if(db.active==="Paper 2"){
    if(db.bank==="master")list=list.filter(x=>x.c.masterHard);
    if(db.bank==="kakamed")list=list.filter(x=>x.c.kakamed);
@@ -55,7 +59,7 @@ function titleOf(c){return (Array.isArray(c.core)&&c.core.length?c.core.join(" /
 function choiceSelect(id,values,selected){return '<select id="'+id+'" style="padding:8px;max-width:100%;border:1px solid #c9d7e9;border-radius:8px;background:white">'+values.map(([v,label])=>'<option value="'+esc(v)+'" '+(v===selected?"selected":"")+'>'+esc(label)+'</option>').join("")+'</select>';}
 function save(){try{localStorage.setItem(STORE,JSON.stringify(db));}catch(_){}} 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-function sessionKey(){return [db.active,db.active==="Paper 2"?db.bank:"all",db.subject,db.condition].join("|");}
+function sessionKey(){return [db.active,db.active==="Paper 2"?(db.bank==="hard"?"hard-unique-v1":db.bank):"all",db.subject,db.condition].join("|");}
 function session(){const x=db.sessions[sessionKey()];return x&&Array.isArray(x.order)&&x.order.length?x:null;}
 function makeSession(randomize=db.randomize){const order=filtered().map(x=>x.i);if(!order.length){db.view="landing";render();return;}if(randomize)shuffle(order);db.sessions[sessionKey()]={order,pos:0,q:0,answers:{},finished:false,created:Date.now(),randomize};db.randomize=randomize;save();render();}
 function current(s){const c=pool[db.active][s.order[s.pos]];return {c,q:c?.questions[s.q],key:c?c.id+":"+(s.q):""};}
