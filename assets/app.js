@@ -2,7 +2,7 @@
 "use strict";
 await window.MED_MASTER_READY;
 const EYE_NOTES=Array.isArray(window.MED_NOTES)?window.MED_NOTES:[];
-const RAW_CASES=[...(window.MED_BANK||[]),...(window.MED_EXTRA||[]),...(window.MED_INTEGRATED_CASES||[]),...(window.MED_P2_EXTREME||[]),...(window.MED_MASTER_HARD||[])];
+const RAW_CASES=[...(window.MED_BANK||[]),...(window.MED_EXTRA||[]),...(window.MED_INTEGRATED_CASES||[]),...(window.MED_P2_EXTREME||[]),...(window.MED_MASTER_HARD||[]),...(window.MED_P2_KAKAMED||[])];
 const SLIDES=window.MED_SLIDES||[];
 const CONFIG=window.MED_BACKEND||{};
 const CORE_MAP={
@@ -25,7 +25,7 @@ for(const p of PAPER_GROUPS)for(const s of p.subjects)for(const name of s.condit
  tags.push({paper:p.paper,subject:s.name});STUDY_TAGS.set(key,tags);
 }
 function tagsFor(name){return STUDY_TAGS.get(String(name||"").toLowerCase())||[]}
-function caseTags(c){if(c.masterHard&&c.module==="Crossover")return [{paper:"Paper 2",subject:"Crossover"}];const unique=new Map();for(const name of c.coreNames||[])for(const tag of tagsFor(name))if(!c.paper2Only||tag.paper==="Paper 2")unique.set(tag.paper+"|"+tag.subject,tag);return [...unique.values()]}
+function caseTags(c){if(c.kakamed)return [{paper:"Paper 2",subject:c.module}];if(c.masterHard&&c.module==="Crossover")return [{paper:"Paper 2",subject:"Crossover"}];const unique=new Map();for(const name of c.coreNames||[])for(const tag of tagsFor(name))if(!c.paper2Only||tag.paper==="Paper 2")unique.set(tag.paper+"|"+tag.subject,tag);return [...unique.values()]}
 function subjectOptions(paper){return PAPER_GROUPS.filter(p=>paper==="All"||p.paper===paper).flatMap(p=>p.subjects.map(s=>s.name)).filter((s,i,a)=>a.indexOf(s)===i)}
 function selectOptions(paper,subject,subjectOnly=false){
  const all=subjectOnly?'<option value="All">All subjects</option>':'<option value="All">Both study papers</option>';
@@ -171,7 +171,7 @@ function practiceCaseStats(c){const saved=c.questions.map(q=>state.caseAnswers[q
 function practiceCaseCard(c){
  const st=practiceCaseStats(c),tags=caseTags(c);
  return '<article class="practice-case-card"><div class="practice-case-meta">'+
-  badge(c.masterHard?"Master bank · Hard":isHardCase(c)?"Hard / advanced":c.isIntegrated?"Integrated reasoning":"Core condition",isHardCase(c)?"amber":"blue")+
+  badge(c.kakamed?"KakaMed · "+c.difficultyRating+"/5":c.masterHard?"Master bank · Hard":isHardCase(c)?"Hard / advanced":c.isIntegrated?"Integrated reasoning":"Core condition",isHardCase(c)?"amber":"blue")+
   '<span>'+c.questions.length+' questions · '+c.questions.filter(q=>q.type==="VSAQ").length+' VSAQ</span></div>'+
   '<h4>'+esc(c.title)+'</h4><p>'+clip(c.scenario,155)+'</p>'+
   '<div class="practice-case-footer"><span>'+st.attempted+' / '+st.total+' attempted'+(st.wrong?' · <b class="practice-miss">'+st.wrong+' to review</b>':"")+'</span>'+
@@ -204,7 +204,7 @@ function renderCases(){
    if(caseSubject!=="All"&&caseSubject!==subject.name)continue;
    const conditionBlocks=[];
    for(const name of subject.conditions){
-    const linked=ordinary.filter(c=>(!c.paper2Only||paper.paper==="Paper 2")&&c.coreNames.some(x=>norm(x)===norm(name))).sort((a,b)=>(b.difficulty==="Challenge")-(a.difficulty==="Challenge")||(a.id||0)-(b.id||0));
+    const linked=ordinary.filter(c=>(!c.kakamed||c.module===subject.name)&&(!c.paper2Only||paper.paper==="Paper 2")&&c.coreNames.some(x=>norm(x)===norm(name))).sort((a,b)=>(b.difficulty==="Challenge")-(a.difficulty==="Challenge")||(a.id||0)-(b.id||0));
     if(!linked.length)continue;
     conditionBlocks.push('<details class="practice-condition"'+(caseSubject!=="All"?' open':'')+'><summary><span>'+esc(name)+'</span><span>'+linked.length+' cases <span class="practice-caret">⌄</span></span></summary><div class="practice-case-list">'+linked.map(practiceCaseCard).join("")+'</div></details>');
    }
@@ -214,6 +214,7 @@ function renderCases(){
  }
  $("view").innerHTML=head("PRACTICE QUESTIONS","Learn from every answer","Choose a subject or a core condition. Answer an SBA to reveal the correct option and its explanation straight away. VSAQs show the expected short answer for self-review.","")+
  '<div class="practice-intro"><strong>EYE1 PRACTICE TESTS — THREE COMPLETE PAPERS:</strong> 48 clinical clusters, 360 questions, immediate SBA/VSAQ feedback, case randomisation and skip-case controls. <a href="cluster-practice.html?paper=EYE1%20Paper%201" style="font-weight:850;color:#3455a5">Open EYE1 practice papers →</a></div>'+
+ '<div class="practice-intro"><strong>P2 KakaMed · Zain Kaka:</strong> 36 Renal/GIT clusters, 288 questions, estimated 3/5 applied or 4/5 hard difficulty. <a href="cluster-practice.html?paper=Paper%202&amp;bank=kakamed">Open KakaMed →</a></div>'+
  '<div class="practice-intro"><strong>Paper 2 focused bank:</strong> 98 clusters across 49 conditions, including new applied mechanisms, pharmacology, data and vertical themes. <a href="cluster-practice.html?paper=Paper%202&amp;bank=focused" style="font-weight:850;color:#3455a5">All focused cases →</a> · <a href="cluster-practice.html?paper=Paper%202&amp;bank=expanded">New applied cases</a> · <a href="cluster-practice.html?paper=Paper%202&amp;bank=sprint">Quick sprint</a> · <a href="cluster-practice.html?paper=Paper%202&amp;bank=mockA">Mock A study</a> · <a href="cluster-practice.html?paper=Paper%202&amp;bank=mockB">Mock B study</a> · <a href="cluster-practice.html?paper=Paper%201">Paper 1 →</a></div>'+
  '<div class="practice-intro">Built around the GEMP1 integrated-assessment examples: one clinical presentation followed by mechanisms, discriminating findings, investigations, data and safe actions. These are original/student-derived questions, not an official Wits examination. Challenge cases use close differential diagnoses and lab interpretation. Study-paper headings are for revision, not guaranteed exam allocation.</div>'+
  '<div class="practice-summary-grid"><div><strong>'+CASES.length+'</strong><span>Total clinical clusters</span></div><div><strong>'+totalQuestions+'</strong><span>Practice questions</span></div><div><strong>'+questionStats().percent+'%</strong><span>Your answer accuracy</span></div><div><strong>'+Object.values(state.caseAnswers).filter(x=>!x.correct).length+'</strong><span>Answers to review</span></div></div>'+
@@ -241,7 +242,7 @@ function practiceFeedback(c,q,saved){
    Case IDs are de-duplicated within each paper even if a condition crosses subjects.
    The user's study split determines grouping, not official exam allocation. */
 function isHardCase(c){return !!(c.masterHard||c.extreme||c.expansion||/challenge|hard|advanced|expert|extreme/i.test(String(c.difficulty||"")));}
-const FLOW_LEVELS={all:"Full archive · all clusters",easy:"Easy archive · all foundational cases",essential:"Easy · essential cases only",hard:"Hard · clinical reasoning",master:"Master bank · 117 clusters"};
+const FLOW_LEVELS={all:"Full archive · all clusters",easy:"Easy archive · all foundational cases",essential:"Easy · essential cases only",hard:"Hard · clinical reasoning",master:"Master bank · 117 clusters",kakamed:"P2 KakaMed · Zain Kaka"};
 const flowKey=(paper,level="all")=>level==="all"?paper:paper+"|"+level;
 function flowLabel(key){const [paper,level="all"]=key.split("|");return level==="all"?paper:paper+" · "+FLOW_LEVELS[level];}
 function buildFlowQueues(){
@@ -254,7 +255,7 @@ function buildFlowQueues(){
   }
   for(const s of p.subjects){
    for(const name of s.conditions){
-    const linked=CASES.filter(c=>!c.masterHard&&!c.extreme&&!c.expansion&&!c.isIntegrated&&c.coreNames.some(x=>norm(x)===norm(name)))
+    const linked=CASES.filter(c=>!c.kakamed&&!c.masterHard&&!c.extreme&&!c.expansion&&!c.isIntegrated&&c.coreNames.some(x=>norm(x)===norm(name)))
       .sort((a,b)=>(a.difficulty==="Challenge")-(b.difficulty==="Challenge")||(a.id||0)-(b.id||0));
     linked.forEach(c=>add(c,s.name));
    }
@@ -269,11 +270,12 @@ function buildFlowQueues(){
   if(p.paper==="Paper 2")for(const c of CASES.filter(c=>c.expansion&&!c.masterHard&&!c.extreme)){const subject=p.subjects.find(s=>s.conditions.some(n=>c.coreNames.some(x=>norm(x)===norm(n))))?.name||"Integrated";add(c,subject);}
   // Keep the original all-question sequence as an unchanged prefix for saved sessions.
   if(p.paper==="Paper 2")for(const c of CASES.filter(c=>c.extreme||c.masterHard))add(c,c.module||"Integrated");
+  if(p.paper==="Paper 2")for(const c of CASES.filter(c=>c.kakamed))add(c,c.module);
   const easy=ordered.filter(x=>!isHardCase(x.c));
   // Keep the old easy/all queues untouched for existing saved positions. The new essential deck removes repetitive easy cases by retaining one per core.
   const covered=new Set(),essential=easy.filter(({c,subject})=>{const keys=(c.coreNames.length?c.coreNames:[subject+":"+c.id]).map(n=>norm(n));if(keys.every(k=>covered.has(k)))return false;keys.forEach(k=>covered.add(k));return true;});
   const decks={all:ordered,easy,essential,hard:ordered.filter(x=>isHardCase(x.c))};
-  if(p.paper==="Paper 2")decks.master=ordered.filter(x=>x.c.masterHard);
+  if(p.paper==="Paper 2"){decks.master=ordered.filter(x=>x.c.masterHard);decks.kakamed=ordered.filter(x=>x.c.kakamed);}
   for(const [level,deck] of Object.entries(decks)){
    const items=deck.flatMap((item,ci)=>item.c.questions.map((q,qi)=>({c:item.c,q,subject:item.subject,caseIndex:ci,questionIndex:qi})));
    out.set(flowKey(p.paper,level),{paper:p.paper,level,cases:deck,items,subjects:p.subjects.map(s=>s.name)});
@@ -304,7 +306,7 @@ function flowCounts(paper){
   started:!!sess,finished:!!sess?.finished&&sess.index>=pack.items.length};
 }
 function flowPaperCard(p){
- const levels=p.paper==="Paper 2"?["hard","essential","master","all","easy"]:["hard","essential","all","easy"];
+ const levels=p.paper==="Paper 2"?["hard","essential","master","kakamed","all","easy"]:["hard","essential","all","easy"];
  const selected=state.flowDifficulty?.[p.paper];const level=levels.includes(selected)?selected:"hard";const key=flowKey(p.paper,level);
  const pack=FLOW_QUEUES.get(key),progress=flowCounts(key);
  const pct=Math.round(100*progress.answered/Math.max(1,progress.total));
@@ -367,12 +369,12 @@ function renderFlow(paper){
  '<div class="flow-main-progress"><div><b>Question '+(pos+1)+' of '+pack.items.length+'</b><span>Case '+(item.caseIndex+1)+' of '+pack.cases.length+' · '+scores.answered+' answered · '+scores.correct+' correct</span></div>'+
  '<div class="flow-progress-track"><span style="width:'+pct+'%"></span></div></div>'+
  '<article class="flow-study-card"><div class="flow-scenario-header"><span class="overline">'+esc(flowLabel(paper))+' / '+esc(item.subject)+' · CASE '+(item.caseIndex+1)+'</span>'+
- (isHardCase(c)?badge(c.masterHard?"Master bank · Hard":"Hard / advanced","amber"):badge("Easy / core","blue"))+'</div>'+
+ (isHardCase(c)?badge(c.kakamed?"KakaMed · "+c.difficultyRating+"/5":c.masterHard?"Master bank · Hard":"Hard / advanced","amber"):badge("Easy / core","blue"))+'</div>'+
  '<details><summary>Reveal cluster title</summary><h2>'+esc(c.title)+'</h2></details>'+
- '<details class="flow-scenario" open><summary>Patient scenario <span>Toggle details</span></summary><p>'+esc(c.scenario)+'</p></details>'+
+ '<details class="flow-scenario" open><summary>Patient scenario <span>Toggle details</span></summary><p>'+esc(c.scenario)+'</p>'+(c.labContext?'<div style="white-space:pre-line;margin:10px 0"><b>Investigations</b>\n'+esc(c.labContext)+'</div>':"")+'</details>'+
  '<div class="flow-question-header"><span>QUESTION '+(item.questionIndex+1)+' OF '+c.questions.length+'</span>'+
  badge(q.type==="VSAQ"?"Very short answer":q.isData?"Data interpretation":"Single best answer","blue")+'</div>'+
- '<h3>'+esc(q.q)+'</h3>'+options+flowFeedback(c,q,record,paper)+
+ (q.context?'<div class="scenario" style="white-space:pre-line">'+esc(q.context)+'</div>':"")+'<h3>'+esc(q.q)+'</h3>'+options+flowFeedback(c,q,record,paper)+
  (record&&q.type==="VSAQ"&&!record.selfReviewed?'<p class="flow-gate">Compare the model answer and self-mark to continue.</p>':"")+
  '<div class="flow-navigation"><button class="btn" data-action="flow-prev" data-paper="'+esc(paper)+'" '+(!prev?"disabled":"")+'>← Previous</button>'+
  '<button class="btn" data-action="flow-skip-question" data-paper="'+esc(paper)+'" aria-keyshortcuts="S">Skip question</button><button class="btn" data-action="flow-skip" data-paper="'+esc(paper)+'" aria-keyshortcuts="K">Skip cluster ↷</button><button class="btn btn-primary flow-next" data-action="flow-next" data-paper="'+esc(paper)+'" '+(!canGo?"disabled":"")+'>'+
@@ -440,8 +442,8 @@ function renderCase(id,idx){
  const palette=c.questions.map((x,i)=>{const f=state.caseAnswers[qrKey(c,x)],fl=state.flags[qrKey(c,x)];return '<button class="'+(i===idx?"active ":"")+(f?(f.correct?"answered":"wrong"):"")+(fl?" flagged":"")+'" data-action="case-jump" data-case="'+c.id+'" data-index="'+i+'">'+(i+1)+'</button>'}).join("");
  const stats=practiceCaseStats(c);
  $("view").innerHTML='<div class="case-layout"><div><button class="back-link" data-action="back-cases">← Back to Practice Questions</button>'+
- '<div class="scenario"><div class="overline">INTEGRATED PRACTICE · '+esc(caseLabel(c))+'</div><details><summary>Reveal cluster title</summary><h2>'+esc(c.title)+'</h2></details><p>'+esc(c.scenario)+'</p></div>'+
- '<div class="question-panel"><div class="q-progress"><span>QUESTION '+(idx+1)+' OF '+c.questions.length+'</span>'+badge(q.type==="VSAQ"?"VSAQ · 1–3 words":q.isData?"Results interpretation":"SBA · 4 options","blue")+'</div><h2>'+esc(q.q)+'</h2>'+
+ '<div class="scenario"><div class="overline">INTEGRATED PRACTICE · '+esc(caseLabel(c))+'</div><details><summary>Reveal cluster title</summary><h2>'+esc(c.title)+'</h2></details><p>'+esc(c.scenario)+'</p>'+(c.labContext?'<div style="white-space:pre-line;margin:10px 0"><b>Investigations</b>\n'+esc(c.labContext)+'</div>':"")+'</div>'+
+ '<div class="question-panel"><div class="q-progress"><span>QUESTION '+(idx+1)+' OF '+c.questions.length+'</span>'+badge(q.type==="VSAQ"?"VSAQ · 1–3 words":q.isData?"Results interpretation":"SBA · 4 options","blue")+'</div>'+(q.context?'<div class="scenario" style="white-space:pre-line">'+esc(q.context)+'</div>':"")+'<h2>'+esc(q.q)+'</h2>'+
  opts+practiceFeedback(c,q,saved)+
  '<div class="question-foot"><button class="btn btn-sm" data-action="flag" data-key="'+esc(key)+'">'+(flag?"⚑ Flagged":"⚐ Flag to revise")+'</button><div class="page-actions"><button class="btn btn-sm" data-action="case-jump" data-case="'+c.id+'" data-index="'+(idx-1)+'" '+(idx===0?"disabled":"")+'>← Previous</button><button class="btn btn-sm" data-action="case-skip-question" data-case="'+c.id+'" data-index="'+idx+'" aria-keyshortcuts="S">Skip question</button><button class="btn btn-sm" data-action="case-skip-cluster" data-case="'+c.id+'" data-index="'+idx+'" aria-keyshortcuts="K">Skip cluster ↷</button><button class="btn btn-primary btn-sm" data-action="case-next" data-case="'+c.id+'" data-index="'+idx+'" aria-keyshortcuts="Enter N ArrowRight" '+(!saved||(q.type==="VSAQ"&&!saved.selfReviewed)?"disabled":"")+'>'+(idx===c.questions.length-1?"Next cluster →":"Next question →")+'</button></div></div>'+
  '<p class="tiny-note"><b>Keyboard:</b> A–D / 1–4 answer · Enter / N / → next · S skip question · K skip cluster · P / ← previous</p>'+
@@ -451,7 +453,7 @@ function renderCase(id,idx){
  '<div class="rule"></div><p class="tiny-note"><strong>Source:</strong> '+esc(c.source||"Student teaching bank")+'</p><button class="btn btn-sm" data-action="practice-reset-case" data-case="'+c.id+'">Restart this case</button><p class="tiny-note">Restart clears the current case answers, not your previous attempt history.</p></div></aside></div>';
 }
 function mockCaseOrder(){
- const byModule={};for(const c of CORE_CASES){const m=c.module;if(!byModule[m])byModule[m]=[];byModule[m].push(c)}
+ const byModule={};for(const c of CORE_CASES){if(c.kakamed)continue;const m=c.module;if(!byModule[m])byModule[m]=[];byModule[m].push(c)}
  Object.keys(byModule).forEach(k=>byModule[k].sort((a,b)=>(a.id*117+51)%997-(b.id*117+51)%997));
  let order=[];let groups=Object.keys(byModule).sort();let alive=true;while(alive){alive=false;for(const k of groups){if(byModule[k].length){order.push(byModule[k].shift());alive=true}}}
  const a=[],b=[];for(let i=0;i<order.length;i++){if(a.length===18&&b.length===18)break;if(i%2===0&&a.length<18)a.push(order[i]);else if(b.length<18)b.push(order[i]);else if(a.length<18)a.push(order[i])}
