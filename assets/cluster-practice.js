@@ -21,15 +21,18 @@ for(const c of sprint){const g=groups.find(g=>papers.find(p=>p.paper==="Paper 2"
 const mixed=[];while(groups.some(g=>g.cases.length)){for(const g of groups){if(g.cases.length)mixed.push(g.cases.shift());}}
 const mockIds={mockA:new Set(mixed.slice(0,15).map(c=>c.id)),mockB:new Set(mixed.slice(15,30).map(c=>c.id))};
 const pool={"Paper 1":[...siteFor("Paper 1"),...(window.MED_PDF_PAPER1||[]).filter(c=>c.questions?.length)],"Paper 2":[...sprint,...p2.filter(c=>!c.sprint)],...Object.fromEntries((window.MED_EYE1_PAPERS||[]).map((cases,i)=>["EYE1 Paper "+(i+1),cases]))};
+const IEYA2="IEYA2 Practice";
+const studentCases=window.MED_IEYA2_STUDENT||[];
+if(studentCases.length)pool[IEYA2]=studentCases;
 let db={active:"Paper 2",randomize:false,sessions:{},showAll:false,subject:"All",condition:"All",bank:"hard",revealed:{},view:"landing"};
 try{const x=JSON.parse(localStorage.getItem(STORE)||"null");if(x&&typeof x==="object")db={...db,...x,sessions:x.sessions||{},revealed:x.revealed||{}};}catch(_){}
 const params=new URLSearchParams(location.search),requestedPaper=params.get("paper");
-if(requestedPaper&&pool[requestedPaper]&&requestedPaper!==db.active){db.active=requestedPaper;db.subject="All";db.condition="All";db.view="landing";}
+if(requestedPaper&&pool[requestedPaper]&&(requestedPaper!==db.active||requestedPaper===IEYA2)){db.active=requestedPaper;db.subject="All";db.condition="All";db.view="landing";}
 if(!pool[db.active])db.active="Paper 2";
 const requestedCondition=params.get("condition");if(requestedCondition){db.condition=requestedCondition;db.subject="All";db.bank="all";db.view="landing";}
 const requestedBank=params.get("bank");if(["focused","expanded","sprint","hard","easy","master","extreme","all","mockA","mockB"].includes(requestedBank)){db.bank=requestedBank;db.subject="All";db.condition=requestedCondition||"All";db.view="landing";}
 const requestedId=params.get("cluster");
-function subjects(){const list=papers.find(p=>p.paper===db.active)?.subjects||[];return db.active==="Paper 2"&&window.MED_MASTER_HARD?.length?[...list,{name:"Crossover",conditions:["Pulmonary Embolism"]}]:list;}
+function subjects(){if(db.active===IEYA2)return ["Renal","GIT","MSK","Haem/Onc"].map(name=>({name,conditions:[...new Set(studentCases.filter(c=>c.sourceSubjects.includes(name)).flatMap(c=>c.core))]}));const list=papers.find(p=>p.paper===db.active)?.subjects||[];return db.active==="Paper 2"&&window.MED_MASTER_HARD?.length?[...list,{name:"Crossover",conditions:["Pulmonary Embolism"]}]:list;}
 function conditions(){return [...new Set(subjects().filter(s=>db.subject==="All"||s.name===db.subject).flatMap(s=>s.conditions))].sort();}
 function filtered(){
  let list=pool[db.active].map((c,i)=>({c,i}));
@@ -43,6 +46,7 @@ function filtered(){
    if(db.bank==="focused")list=list.filter(x=>x.c.sprint||x.c.expansion).sort((a,b)=>{const ai=a.c.sprint?Number(a.c.id.replace("site-",""))-5000:Number(a.c.id.replace("site-",""))-6000;const bi=b.c.sprint?Number(b.c.id.replace("site-",""))-5000:Number(b.c.id.replace("site-",""))-6000;return ai-bi||Number(!!a.c.expansion)-Number(!!b.c.expansion);});
    if(db.bank==="mockA"||db.bank==="mockB")list=list.filter(x=>mockIds[db.bank].has(x.c.id)).sort((a,b)=>mixed.indexOf(a.c)-mixed.indexOf(b.c));
  }
+ if(db.active===IEYA2)return list.filter(({c})=>(db.subject==="All"||c.sourceSubjects.includes(db.subject))&&(db.condition==="All"||c.core.some(n=>tidy(n)===tidy(db.condition))));
  const allowed=conditions().map(tidy);
  return list.filter(({c})=>{const tags=(Array.isArray(c.core)?c.core:[]).map(tidy);if(db.condition!=="All")return tags.includes(tidy(db.condition));if(db.subject!=="All")return tags.some(t=>allowed.includes(t))||(!tags.length&&(c.module===db.subject||c.subject===db.subject));return true;});
 }
@@ -60,13 +64,13 @@ function statCard(p){const s=session(),count=filtered().length,done=s?score(s):{
 function landing(){
  const p=db.active,s=session(),cases=filtered(),visible=db.showAll?cases:cases.slice(0,42);
  const paperTabs=Object.keys(pool).map(name=>'<button data-act="paper" data-paper="'+esc(name)+'" class="'+(p===name?"selected":"")+'>'+esc(name)+'</button>').join("");
- const paperDescription=p.startsWith("EYE1 Paper")?"Complete uploaded GEMP1 EYE1 practice PDF: 16 case clusters, 120 questions, BCMH/CVS/RESP, original short-answer targets and explanations.":p==="Paper 1"?"Original site cases plus uploaded Paper 1 practice questions. Uploaded cases without condition tags remain under All.":"Choose the new 117-cluster master bank, Hard clinical reasoning, or foundational practice. Core conditions are visible when choosing a case; the case itself remains blind.";
+ const paperDescription=p===IEYA2?"Student-authored GEMP1 Paper 2 practice by Mariam Baruffwala (2026): 19 clusters, 135 questions. Filter by block and core; source answer keys and explanations retained. Not an official exam.":p.startsWith("EYE1 Paper")?"Complete uploaded GEMP1 EYE1 practice PDF: 16 case clusters, 120 questions, BCMH/CVS/RESP, original short-answer targets and explanations.":p==="Paper 1"?"Original site cases plus uploaded Paper 1 practice questions. Uploaded cases without condition tags remain under All.":"Choose the new 117-cluster master bank, Hard clinical reasoning, or foundational practice. Core conditions are visible when choosing a case; the case itself remains blind.";
  root.innerHTML='<div class="cp-hero"><a class="cp-back" href="index.html#practice">← All practice questions</a><div class="cp-overline">GEMP1 · EXAM PREP</div><h1>Case cluster study mode</h1><p>Work through complete clinical cases without being told the diagnosis. Choose a paper, answer each SBA or VSAQ, and get instant feedback before moving on.</p></div>'+
  '<div class="cp-tabs" role="group" aria-label="Select practice paper">'+paperTabs+'</div>'+
  '<div class="cp-stats">'+statCard(p)+'</div>'+
  '<section class="cp-config"><div><h2>'+esc(p)+' · Case clusters</h2><p>'+esc(paperDescription)+'</p><div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:15px">'+(p==="Paper 2"?'<label>Question set '+choiceSelect("cp-bank",[["hard","Hard · clinical reasoning"],["master","Master bank · 117 clusters"],["extreme","Extreme · 49 clusters"],["easy","Easy / foundational"],["focused","Focused bank"],["expanded","Applied cases"],["sprint","Quick sprint"],["all","Full archive"],["mockA","Mock A · study"],["mockB","Mock B · study"]],db.bank)+'</label>':"")+(subjects().length?'<label>Subject '+choiceSelect("cp-subject",[["All","All subjects"],...subjects().map(s=>[s.name,s.name])],db.subject)+'</label><label>Core condition '+choiceSelect("cp-condition",[["All","All conditions"],...conditions().map(n=>[n,n])],db.condition)+'</label>':"")+'</div><p>'+cases.length+' matching clusters · '+cases.reduce((n,x)=>n+x.c.questions.length,0)+' questions</p><label class="cp-toggle"><input type="checkbox" id="cp-shuffle" '+(db.randomize?"checked":"")+'> Randomise cluster order</label></div><div class="cp-actions"><button class="cp-primary" data-act="start">Start continuous study →</button>'+(s?'<button class="cp-secondary" data-act="continue">Continue session ('+score(s).answered+' answered)</button>':"")+'</div></section>'+
  '<div class="cp-list-head"><h2>Choose any cluster</h2><span>Core condition shown here · diagnosis hidden during practice</span></div>'+
- '<div class="cp-grid">'+visible.map(({c,i},j)=>'<article class="cp-cluster"><span class="cp-cluster-number">CLUSTER '+String(j+1).padStart(2,"0")+'</span><strong>'+esc(titleOf(c))+'</strong><small>'+c.questions.length+' questions · SBA + short answers'+(c.masterHard?" · Master bank / Hard":c.extreme?" · Extreme":c.sprint?" · Sprint":c.expansion?" · Applied":/challenge|hard|advanced|expert/i.test(String(c.difficulty||""))?" · Hard":" · Easy / core")+'</small><div class="cp-actions"><button class="cp-primary" data-act="open" data-idx="'+i+'">Practise →</button></div></article>').join("")+'</div>'+
+ '<div class="cp-grid">'+visible.map(({c,i},j)=>'<article class="cp-cluster"><span class="cp-cluster-number">CLUSTER '+String(j+1).padStart(2,"0")+'</span><strong>'+esc(titleOf(c))+'</strong><small>'+c.questions.length+' questions · SBA + short answers'+(p===IEYA2?" · Student practice":c.masterHard?" · Master bank / Hard":c.extreme?" · Extreme":c.sprint?" · Sprint":c.expansion?" · Applied":/challenge|hard|advanced|expert/i.test(String(c.difficulty||""))?" · Hard":" · Easy / core")+'</small><div class="cp-actions"><button class="cp-primary" data-act="open" data-idx="'+i+'">Practise →</button></div></article>').join("")+'</div>'+
  (cases.length>visible.length?'<button class="cp-secondary cp-more" data-act="more">Show all '+cases.length+' clusters</button>':"")+
  '<p class="cp-note">Study-paper groupings are for revision, not a guarantee of Wits examination allocation. All questions are educational practice, not official Wits past-paper questions. Progress is saved on this device.</p>';
 }
